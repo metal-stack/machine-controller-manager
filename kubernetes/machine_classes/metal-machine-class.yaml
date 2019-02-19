@@ -1,0 +1,23 @@
+# Sample Metal machine class
+
+apiVersion: machine.sapcloud.io/v1alpha1
+kind: MetalMachineClass
+metadata:
+  name: test-metal # Name of metal machine class goes here
+  namespace: default # Namespace in which the machine class is to be deployed
+spec:
+  tenant: "ABC Cooperation"
+  project: f40c6787-5ac0-657e-9fe4-62d433c5df11 # UUID of a project with which you have rights
+  image: alpine-3.9 # OS ID or slug goes here
+  partition:
+    - fra-eqx-1 # Facilities wherein the server can be deployed. Can be one, two or many, or the keyword "any"
+  size: x1-small-x86 # Type of metal bare-metal machine
+  tags:
+    Name: sample-machine-name # Name tag that can be used to identify a machine at Metal
+    kubernetes.io/cluster/YOUR_CLUSTER_NAME: "1" # This is mandatory as the safety controller uses this tag to identify VMs created by this controller.
+    kubernetes.io/role/YOUR_ROLE_NAME: "1" # This is mandatory as the safety controller uses this tag to identify VMs created by by this controller.
+    tag1: tag1-value # A set of additional tags attached to a machine (optional)
+    tag2: tag2-value # A set of additional tags attached to a machine (optional)
+  secretRef: # Secret pointing to a secret which contains the provider secret and cloudconfig
+    namespace: default  # Namespace
+    name: test-secret # Name of the secret
