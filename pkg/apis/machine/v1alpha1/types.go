@@ -1173,6 +1173,8 @@ const (
 	AlicloudAccessKeySecret string = "alicloudAccessKeySecret"
 
 	// PacketAPIKey is a constant for a key name that is part of the Packet cloud credentials
+	// MetalAPIKey is a constant for a key name that is part of the Metal cloud credentials
+	MetalAPIKey string = "metalAPIKey"
 	PacketAPIKey string = "apiToken"
 )
 
@@ -1277,4 +1279,61 @@ type PacketMachineClassSpec struct {
 	UserData     string             `json:"userdata,omitempty"`
 
 	SecretRef *corev1.SecretReference `json:"secretRef,omitempty"`
+}
+
+// PacketSSHKeySpec describes ssh keys for packet
+type PacketSSHKeySpec struct {
+	ID          string `json:"id"`
+	Fingerprint string `json:"fingerprint"`
+}
+
+/********************** MetalMachineClass APIs ***************/
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// MetalMachineClass TODO
+type MetalMachineClass struct {
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// +optional
+	metav1.TypeMeta `json:",inline"`
+
+	// +optional
+	Spec MetalMachineClassSpec `json:"spec,omitempty"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// MetalMachineClassList is a collection of MetalMachineClasses.
+type MetalMachineClassList struct {
+	// +optional
+	metav1.TypeMeta `json:",inline"`
+
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	// +optional
+	Items []MetalMachineClass `json:"items"`
+}
+
+// MetalMachineClassSpec is the specification of a cluster.
+type MetalMachineClassSpec struct {
+	Partition string             `json:"partition"`
+	Size      string             `json:"size"`
+	Image     string             `json:"image"`
+	Tenant    string             `json:"tenant"`
+	Project   string             `json:"project"`
+	Tags      map[string]string  `json:"tags,omitempty"`
+	SSHKeys   []PacketSSHKeySpec `json:"sshKeys,omitempty"`
+	UserData  string             `json:"userdata,omitempty"`
+
+	SecretRef *corev1.SecretReference `json:"secretRef,omitempty"`
+}
+
+// MetalSSHKeySpec describes ssh keys for packet
+type MetalSSHKeySpec struct {
+	ID          string `json:"id"`
+	Fingerprint string `json:"fingerprint"`
 }
