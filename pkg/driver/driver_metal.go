@@ -115,13 +115,10 @@ func (d *MetalDriver) GetVMs(machineID string) (VMs, error) {
 			return nil, err
 		}
 		for _, m := range mlr.Machines {
-			// FIXME add only tagged machines once metal does have tags on machines.
-			/*
-				tags := metalTagsStringToMap(m.Tags)
-					if v, ok := tags[clusterName]; ok && v == nodeRole {
-						listOfVMs[*m.ID] = *m.Allocation.Hostname
-					}
-			*/
+			tags := metalTagsStringToMap(m.Tags)
+			if v, ok := tags[clusterName]; ok && v == nodeRole {
+				listOfVMs[*m.ID] = *m.Allocation.Hostname
+			}
 			listOfVMs[*m.ID] = *m.Allocation.Hostname
 		}
 	} else {
