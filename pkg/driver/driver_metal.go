@@ -67,7 +67,7 @@ func (d *MetalDriver) Create() (string, string, error) {
 		glog.Errorf("Could not create machine: %v", err)
 		return "", "", err
 	}
-	return d.encodeMachineID(*mcr.Machine.Partition.ID, *mcr.Machine.ID), *mcr.Machine.Allocation.Hostname, nil
+	return d.encodeMachineID(*mcr.Machine.Partition.ID, *mcr.Machine.ID), *mcr.Machine.Allocation.Name, nil
 }
 
 // Delete method is used to delete a Machine machine
