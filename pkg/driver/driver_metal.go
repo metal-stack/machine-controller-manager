@@ -52,14 +52,16 @@ func (d *MetalDriver) Create() (string, string, error) {
 	// metal tags are strings only
 	tags := metalTagsMapToString(d.MetalMachineClass.Spec.Tags)
 	createRequest := &metalgo.MachineCreateRequest{
-		Name:      "gardener",
-		UserData:  d.UserData,
-		Size:      d.MetalMachineClass.Spec.Size,
-		Project:   d.MetalMachineClass.Spec.Project,
-		Tenant:    d.MetalMachineClass.Spec.Tenant,
-		Partition: d.MetalMachineClass.Spec.Partition,
-		Image:     d.MetalMachineClass.Spec.Image,
-		Tags:      tags,
+		Description: d.MachineName + " created by gardener.",
+		Name:        d.MachineName,
+		Hostname:    d.MachineName,
+		UserData:    d.UserData,
+		Size:        d.MetalMachineClass.Spec.Size,
+		Project:     d.MetalMachineClass.Spec.Project,
+		Tenant:      d.MetalMachineClass.Spec.Tenant,
+		Partition:   d.MetalMachineClass.Spec.Partition,
+		Image:       d.MetalMachineClass.Spec.Image,
+		Tags:        tags,
 	}
 
 	mcr, err := svc.MachineCreate(createRequest)
@@ -67,7 +69,9 @@ func (d *MetalDriver) Create() (string, string, error) {
 		glog.Errorf("Could not create machine: %v", err)
 		return "", "", err
 	}
-	return d.encodeMachineID(*mcr.Machine.Partition.ID, *mcr.Machine.ID), *mcr.Machine.Allocation.Name, nil
+	machine := mcr.Machine
+	fmt.Printf("partition: %#v\n", *machine.Partition)
+	return d.encodeMachineID(*machine.Partition.ID, *machine.ID), *machine.Allocation.Name, nil
 }
 
 // Delete method is used to delete a Machine machine
