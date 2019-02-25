@@ -19,7 +19,6 @@ package driver
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	v1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
@@ -46,10 +45,14 @@ func NewMetalDriver(create func() (string, error), delete func() error, existing
 // Create method is used to create a Metal machine
 func (d *MetalDriver) Create() (string, string, error) {
 
-	svc := d.createSVC()
+	svc, err := d.createSVC()
+	if err != nil {
+		return "", "", err
+	}
 	// metal tags are strings only
 	tags := metalTagsMapToString(d.MetalMachineClass.Spec.Tags)
 	createRequest := &metalgo.MachineCreateRequest{
+		Name:      "gardener",
 		UserData:  d.UserData,
 		Size:      d.MetalMachineClass.Spec.Size,
 		Project:   d.MetalMachineClass.Spec.Project,
@@ -70,9 +73,12 @@ func (d *MetalDriver) Create() (string, string, error) {
 // Delete method is used to delete a Machine machine
 func (d *MetalDriver) Delete() error {
 
-	svc := d.createSVC()
+	svc, err := d.createSVC()
+	if err != nil {
+		return err
+	}
 	machineID := d.decodeMachineID(d.MachineID)
-	_, err := svc.MachineDelete(machineID)
+	_, err = svc.MachineDelete(machineID)
 	if err != nil {
 		glog.Errorf("Could not terminate machine %s: %v", d.MachineID, err)
 		return err
@@ -105,7 +111,10 @@ func (d *MetalDriver) GetVMs(machineID string) (VMs, error) {
 		return listOfVMs, nil
 	}
 
-	svc := d.createSVC()
+	svc, err := d.createSVC()
+	if err != nil {
+		return nil, err
+	}
 	if machineID == "" {
 		listRequest := &metalgo.MachineListRequest{
 			Project: d.MetalMachineClass.Spec.Project,
@@ -135,22 +144,25 @@ func (d *MetalDriver) GetVMs(machineID string) (VMs, error) {
 }
 
 // Helper function to create SVC
-func (d *MetalDriver) createSVC() *metalgo.Driver {
+func (d *MetalDriver) createSVC() (*metalgo.Driver, error) {
 
-	token := strings.TrimSpace(string(d.CloudConfig.Data[v1alpha1.MetalAPIKey]))
-
-	// FIXME add proper endpoint.
-	url := "metal-api:80"
-	urlFromEnv := os.Getenv("METAL_API_URL")
-	if urlFromEnv != "" {
-		url = urlFromEnv
+	t, ok := d.CloudConfig.Data[v1alpha1.MetalAPIKey]
+	if !ok {
+		return nil, fmt.Errorf("missing %s in secret", v1alpha1.MetalAPIKey)
 	}
+	token := strings.TrimSpace(string(t))
+
+	u, ok := d.CloudConfig.Data[v1alpha1.MetalAPIURL]
+	if !ok {
+		return nil, fmt.Errorf("missing %s in secret", v1alpha1.MetalAPIURL)
+	}
+	url := strings.TrimSpace(string(u))
 
 	if token != "" {
-		return metalgo.NewDriver(url, token)
+		return metalgo.NewDriver(url, token), nil
 	}
 
-	return nil
+	return nil, nil
 }
 
 func (d *MetalDriver) encodeMachineID(partition, machineID string) string {

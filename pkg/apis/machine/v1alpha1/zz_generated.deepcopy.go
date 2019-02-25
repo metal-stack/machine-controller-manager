@@ -1642,7 +1642,7 @@ func (in *MetalMachineClassSpec) DeepCopyInto(out *MetalMachineClassSpec) {
 	}
 	if in.SSHKeys != nil {
 		in, out := &in.SSHKeys, &out.SSHKeys
-		*out = make([]PacketSSHKeySpec, len(*in))
+		*out = make([]MetalSSHKeySpec, len(*in))
 		copy(*out, *in)
 	}
 	if in.SecretRef != nil {
