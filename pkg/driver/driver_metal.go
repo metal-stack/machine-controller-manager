@@ -19,6 +19,7 @@ package driver
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	v1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
@@ -138,8 +139,15 @@ func (d *MetalDriver) createSVC() *metalgo.Driver {
 
 	token := strings.TrimSpace(string(d.CloudConfig.Data[v1alpha1.MetalAPIKey]))
 
+	// FIXME add proper endpoint.
+	url := "metal-api:80"
+	urlFromEnv := os.Getenv("METAL_API_URL")
+	if urlFromEnv != "" {
+		url = urlFromEnv
+	}
+
 	if token != "" {
-		return metalgo.NewDriver(token)
+		return metalgo.NewDriver(url, token)
 	}
 
 	return nil
