@@ -1176,6 +1176,8 @@ const (
 	// MetalAPIKey is a constant for a key name that is part of the Metal cloud credentials
 	MetalAPIKey string = "metalAPIKey"
 	PacketAPIKey string = "apiToken"
+	// MetalAPIURL is a constant for a url where to reach out the metal api
+	MetalAPIURL string = "metalAPIURL"
 )
 
 /********************** AlicloudMachineClass APIs ***************/
@@ -1320,14 +1322,14 @@ type MetalMachineClassList struct {
 
 // MetalMachineClassSpec is the specification of a cluster.
 type MetalMachineClassSpec struct {
-	Partition string             `json:"partition"`
-	Size      string             `json:"size"`
-	Image     string             `json:"image"`
-	Tenant    string             `json:"tenant"`
-	Project   string             `json:"project"`
-	Tags      map[string]string  `json:"tags,omitempty"`
-	SSHKeys   []PacketSSHKeySpec `json:"sshKeys,omitempty"`
-	UserData  string             `json:"userdata,omitempty"`
+	Partition string            `json:"partition"`
+	Size      string            `json:"size"`
+	Image     string            `json:"image"`
+	Tenant    string            `json:"tenant"`
+	Project   string            `json:"project"`
+	Tags      map[string]string `json:"tags,omitempty"`
+	SSHKeys   []MetalSSHKeySpec `json:"sshKeys,omitempty"`
+	UserData  string            `json:"userdata,omitempty"`
 
 	SecretRef *corev1.SecretReference `json:"secretRef,omitempty"`
 }

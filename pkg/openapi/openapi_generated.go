@@ -2532,7 +2532,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 								Items: &spec.SchemaOrArray{
 									Schema: &spec.Schema{
 										SchemaProps: spec.SchemaProps{
-											Ref: ref("github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1.PacketSSHKeySpec"),
+											Ref: ref("github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1.MetalSSHKeySpec"),
 										},
 									},
 								},
@@ -2554,7 +2554,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 				},
 			},
 			Dependencies: []string{
-				"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1.PacketSSHKeySpec", "k8s.io/api/core/v1.SecretReference"},
+				"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1.MetalSSHKeySpec", "k8s.io/api/core/v1.SecretReference"},
 		},
 		"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1.MetalSSHKeySpec": {
 			Schema: spec.Schema{

@@ -2554,7 +2554,7 @@ func autoConvert_machine_MetalMachineClassSpec_To_v1alpha1_MetalMachineClassSpec
 	out.Tenant = in.Tenant
 	out.Project = in.Project
 	out.Tags = *(*map[string]string)(unsafe.Pointer(&in.Tags))
-	out.SSHKeys = *(*[]PacketSSHKeySpec)(unsafe.Pointer(&in.SSHKeys))
+	out.SSHKeys = *(*[]MetalSSHKeySpec)(unsafe.Pointer(&in.SSHKeys))
 	out.UserData = in.UserData
 	out.SecretRef = (*v1.SecretReference)(unsafe.Pointer(in.SecretRef))
 	return nil
