@@ -69,9 +69,8 @@ func (d *MetalDriver) Create() (string, string, error) {
 		glog.Errorf("Could not create machine: %v", err)
 		return "", "", err
 	}
-	machine := mcr.Machine
-	fmt.Printf("partition: %#v\n", *machine.Partition)
-	return d.encodeMachineID(*machine.Partition.ID, *machine.ID), *machine.Allocation.Name, nil
+	// FIXME partition is currently not in the Machine response, once available use this
+	return d.encodeMachineID(d.MetalMachineClass.Spec.Partition, *mcr.Machine.ID), *mcr.Machine.Allocation.Name, nil
 }
 
 // Delete method is used to delete a Machine machine
