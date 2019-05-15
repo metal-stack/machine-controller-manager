@@ -15,6 +15,13 @@ spec:
       - name: machine-controller-manager
         image: registry.f-i-ts.io/gardener-project/gardener/machine-controller-manager:0.18.0
         imagePullPolicy: Never
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
         command:
           - ./machine-controller-manager
           - --v=2
