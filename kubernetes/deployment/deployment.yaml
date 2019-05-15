@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       - name: machine-controller-manager
-        image: registry.f-i-ts.io/gardener-project/gardener/machine-controller-manager:0.15.0
+        image: registry.f-i-ts.io/gardener-project/gardener/machine-controller-manager:0.18.0
         imagePullPolicy: Never
         command:
           - ./machine-controller-manager
