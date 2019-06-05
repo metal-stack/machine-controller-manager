@@ -8,8 +8,8 @@ metadata:
 spec:
   tenant: "Metal Cooperation"
   project: "gardener-test" # UUID of a project with which you have rights
-  image: alpine-3.8 # OS ID or slug goes here
-  partition: vagrant-lab # Facilities wherein the server can be deployed. Can be one, two or many, or the keyword "any"
+  image: ubuntu-19.04 # OS ID or slug goes here
+  partition: fra-equ01 # Facilities wherein the server can be deployed. Can be one, two or many, or the keyword "any"
   size: t1-small-x86 # Type of metal bare-metal machine
   tags:
     Name: sample-machine-name # Name tag that can be used to identify a machine at Metal
