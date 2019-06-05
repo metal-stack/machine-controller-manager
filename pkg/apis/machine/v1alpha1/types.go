@@ -1175,6 +1175,8 @@ const (
 	// PacketAPIKey is a constant for a key name that is part of the Packet cloud credentials
 	// MetalAPIKey is a constant for a key name that is part of the Metal cloud credentials
 	MetalAPIKey string = "metalAPIKey"
+	// MetalAPIHMac is a constant for a hmac that is part of the Metal cloud credentials
+	MetalAPIHMac string = "metalAPIHMac"
 	PacketAPIKey string = "apiToken"
 	// MetalAPIURL is a constant for a url where to reach out the metal api
 	MetalAPIURL string = "metalAPIURL"

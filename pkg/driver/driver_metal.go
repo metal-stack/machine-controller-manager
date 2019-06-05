@@ -24,8 +24,8 @@ import (
 	v1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 
-	metalgo "git.f-i-ts.de/cloud-native/metal/metal-go"
 	"github.com/golang/glog"
+	metalgo "github.com/metal-pod/metal-go"
 )
 
 // MetalDriver is the driver struct for holding Metal machine information
@@ -154,6 +154,12 @@ func (d *MetalDriver) createSVC() (*metalgo.Driver, error) {
 	}
 	token := strings.TrimSpace(string(t))
 
+	h, ok := d.CloudConfig.Data[v1alpha1.MetalAPIHMac]
+	if !ok {
+		return nil, fmt.Errorf("missing %s in secret", v1alpha1.MetalAPIKey)
+	}
+	hmac := strings.TrimSpace(string(h))
+
 	u, ok := d.CloudConfig.Data[v1alpha1.MetalAPIURL]
 	if !ok {
 		return nil, fmt.Errorf("missing %s in secret", v1alpha1.MetalAPIURL)
@@ -161,7 +167,11 @@ func (d *MetalDriver) createSVC() (*metalgo.Driver, error) {
 	url := strings.TrimSpace(string(u))
 
 	if token != "" {
-		return metalgo.NewDriver(url, token), nil
+		return metalgo.NewDriver(url, token, "")
+	}
+
+	if hmac != "" {
+		return metalgo.NewDriver(url, "", hmac)
 	}
 
 	return nil, nil
