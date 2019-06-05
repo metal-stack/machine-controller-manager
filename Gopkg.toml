@@ -10,7 +10,7 @@ required = [
 
 [[constraint]]
   name = "github.com/go-openapi/spec"
-  revision = "6aced65f8501fe1217321abf0749d354824ba2ff"
+  version = "v0.19.0"
 
 [[constraint]]
   name = "github.com/golang/glog"
@@ -77,3 +77,7 @@ required = [
 [[constraint]]
   name = "github.com/aliyun/alibaba-cloud-sdk-go"
   version = "1.27.7"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/metal-pod/metal-go"
