@@ -147,18 +147,8 @@ func (d *MetalDriver) GetVMs(machineID string) (VMs, error) {
 
 // Helper function to create SVC
 func (d *MetalDriver) createSVC() (*metalgo.Driver, error) {
-
-	t, ok := d.CloudConfig.Data[v1alpha1.MetalAPIKey]
-	if !ok {
-		return nil, fmt.Errorf("missing %s in secret", v1alpha1.MetalAPIKey)
-	}
-	token := strings.TrimSpace(string(t))
-
-	h, ok := d.CloudConfig.Data[v1alpha1.MetalAPIHMac]
-	if !ok {
-		return nil, fmt.Errorf("missing %s in secret", v1alpha1.MetalAPIKey)
-	}
-	hmac := strings.TrimSpace(string(h))
+	token := strings.TrimSpace(string(d.CloudConfig.Data[v1alpha1.MetalAPIKey]))
+	hmac := strings.TrimSpace(string(d.CloudConfig.Data[v1alpha1.MetalAPIHMac]))
 
 	u, ok := d.CloudConfig.Data[v1alpha1.MetalAPIURL]
 	if !ok {
@@ -166,15 +156,7 @@ func (d *MetalDriver) createSVC() (*metalgo.Driver, error) {
 	}
 	url := strings.TrimSpace(string(u))
 
-	if token != "" {
-		return metalgo.NewDriver(url, token, "")
-	}
-
-	if hmac != "" {
-		return metalgo.NewDriver(url, "", hmac)
-	}
-
-	return nil, nil
+	return metalgo.NewDriver(url, token, hmac)
 }
 
 func (d *MetalDriver) encodeMachineID(partition, machineID string) string {

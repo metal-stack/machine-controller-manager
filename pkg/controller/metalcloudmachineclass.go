@@ -185,6 +185,10 @@ func (c *controller) updateMetalMachineClassFinalizers(class *v1alpha1.MetalMach
 		return
 	}
 
+	// FIXME: The following lines are rude
+	class.Kind = "MetalMachineClass"
+	class.APIVersion = "machine.sapcloud.io/v1alpha1"
+
 	clone := class.DeepCopy()
 	clone.Finalizers = finalizers
 	_, err = c.controlMachineClient.MetalMachineClasses(class.Namespace).Update(clone)
