@@ -88,12 +88,12 @@ func validateMetalMachineClassSpec(spec *machine.MetalMachineClassSpec, fldPath 
 	return allErrs
 }
 
-func validateMetalClassSpecTags(tags map[string]string, fldPath *field.Path) field.ErrorList {
+func validateMetalClassSpecTags(tags []string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	clusterName := ""
 	nodeRole := ""
 
-	for key := range tags {
+	for _, key := range tags {
 		if strings.Contains(key, "kubernetes.io/cluster/") {
 			clusterName = key
 		} else if strings.Contains(key, "kubernetes.io/role/") {

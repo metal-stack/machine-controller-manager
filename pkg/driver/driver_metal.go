@@ -49,19 +49,18 @@ func (d *MetalDriver) Create() (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	// metal tags are strings only
-	tags := metalTagsMapToString(d.MetalMachineClass.Spec.Tags)
 	createRequest := &metalgo.MachineCreateRequest{
-		Description: d.MachineName + " created by gardener.",
-		Name:        d.MachineName,
-		Hostname:    d.MachineName,
-		UserData:    d.UserData,
-		Size:        d.MetalMachineClass.Spec.Size,
-		Project:     d.MetalMachineClass.Spec.Project,
-		Tenant:      d.MetalMachineClass.Spec.Tenant,
-		Partition:   d.MetalMachineClass.Spec.Partition,
-		Image:       d.MetalMachineClass.Spec.Image,
-		Tags:        tags,
+		Description:   d.MachineName + " created by gardener.",
+		Name:          d.MachineName,
+		Hostname:      d.MachineName,
+		UserData:      d.UserData,
+		Size:          d.MetalMachineClass.Spec.Size,
+		Project:       d.MetalMachineClass.Spec.Project,
+		Tenant:        d.MetalMachineClass.Spec.Tenant,
+		Partition:     d.MetalMachineClass.Spec.Partition,
+		Image:         d.MetalMachineClass.Spec.Image,
+		Tags:          d.MetalMachineClass.Spec.Tags,
+		SSHPublicKeys: d.MetalMachineClass.Spec.SSHKeys,
 	}
 
 	mcr, err := svc.MachineCreate(createRequest)
@@ -101,7 +100,7 @@ func (d *MetalDriver) GetVMs(machineID string) (VMs, error) {
 	clusterName := ""
 	nodeRole := ""
 
-	for key := range d.MetalMachineClass.Spec.Tags {
+	for _, key := range d.MetalMachineClass.Spec.Tags {
 		if strings.Contains(key, "kubernetes.io/cluster/") {
 			clusterName = key
 		} else if strings.Contains(key, "kubernetes.io/role/") {
@@ -127,11 +126,19 @@ func (d *MetalDriver) GetVMs(machineID string) (VMs, error) {
 			return nil, err
 		}
 		for _, m := range mlr.Machines {
-			tags := metalTagsStringToMap(m.Tags)
-			if v, ok := tags[clusterName]; ok && v == nodeRole {
+			matchedCluster := false
+			matchedRole := false
+			for _, tag := range m.Tags {
+				switch tag {
+				case clusterName:
+					matchedCluster = true
+				case nodeRole:
+					matchedRole = true
+				}
+			}
+			if matchedCluster && matchedRole {
 				listOfVMs[*m.ID] = *m.Allocation.Hostname
 			}
-			listOfVMs[*m.ID] = *m.Allocation.Hostname
 		}
 	} else {
 		machineID = d.decodeMachineID(machineID)
@@ -166,21 +173,4 @@ func (d *MetalDriver) encodeMachineID(partition, machineID string) string {
 func (d *MetalDriver) decodeMachineID(id string) string {
 	splitProviderID := strings.Split(id, "/")
 	return splitProviderID[len(splitProviderID)-1]
-}
-
-func metalTagsMapToString(tags map[string]string) []string {
-	ret := make([]string, 0)
-	for k, v := range tags {
-		ret = append(ret, fmt.Sprintf("%s:%s", k, v))
-	}
-	return ret
-}
-
-func metalTagsStringToMap(tags []string) map[string]string {
-	ret := map[string]string{}
-	for _, t := range tags {
-		parts := strings.SplitN(t, ":", 2)
-		ret[parts[0]] = parts[1]
-	}
-	return ret
 }
