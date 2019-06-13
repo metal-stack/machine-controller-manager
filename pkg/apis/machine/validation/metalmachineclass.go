@@ -81,7 +81,8 @@ func validateMetalMachineClassSpec(spec *machine.MetalMachineClassSpec, fldPath 
 		allErrs = append(allErrs, field.Required(fldPath.Child("partition"), "Partition is required"))
 	}
 
-	allErrs = append(allErrs, validateMetalClassSpecTags(spec.Tags, field.NewPath("spec.tags"))...)
+	// FIXME: allow settings machine tags
+	// allErrs = append(allErrs, validateMetalClassSpecTags(spec.Tags, field.NewPath("spec.tags"))...)
 	allErrs = append(allErrs, validateSecretRef(spec.SecretRef, field.NewPath("spec.secretRef"))...)
 
 	return allErrs
