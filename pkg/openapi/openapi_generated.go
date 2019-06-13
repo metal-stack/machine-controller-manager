@@ -2515,8 +2515,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 						},
 						"tags": {
 							SchemaProps: spec.SchemaProps{
-								Type: []string{"object"},
-								AdditionalProperties: &spec.SchemaOrBool{
+								Type: []string{"array"},
+								Items: &spec.SchemaOrArray{
 									Schema: &spec.Schema{
 										SchemaProps: spec.SchemaProps{
 											Type:   []string{"string"},
@@ -2532,7 +2532,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 								Items: &spec.SchemaOrArray{
 									Schema: &spec.Schema{
 										SchemaProps: spec.SchemaProps{
-											Ref: ref("github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1.MetalSSHKeySpec"),
+											Type:   []string{"string"},
+											Format: "",
 										},
 									},
 								},
@@ -2554,30 +2555,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 				},
 			},
 			Dependencies: []string{
-				"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1.MetalSSHKeySpec", "k8s.io/api/core/v1.SecretReference"},
-		},
-		"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1.MetalSSHKeySpec": {
-			Schema: spec.Schema{
-				SchemaProps: spec.SchemaProps{
-					Description: "MetalSSHKeySpec describes ssh keys for packet",
-					Properties: map[string]spec.Schema{
-						"id": {
-							SchemaProps: spec.SchemaProps{
-								Type:   []string{"string"},
-								Format: "",
-							},
-						},
-						"fingerprint": {
-							SchemaProps: spec.SchemaProps{
-								Type:   []string{"string"},
-								Format: "",
-							},
-						},
-					},
-					Required: []string{"id", "fingerprint"},
-				},
-			},
-			Dependencies: []string{},
+				"k8s.io/api/core/v1.SecretReference"},
 		},
 		"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1.NodeTemplateSpec": {
 			Schema: spec.Schema{
