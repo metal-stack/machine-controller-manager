@@ -1274,22 +1274,16 @@ type PacketMachineClassList struct {
 
 // PacketMachineClassSpec is the specification of a cluster.
 type PacketMachineClassSpec struct {
-	Facility     []string           `json:"facility"`
-	MachineType  string             `json:"machineType"`
-	BillingCycle string             `json:"billingCycle"`
-	OS           string             `json:"OS"`
-	ProjectID    string             `json:"projectID"`
-	Tags         map[string]string  `json:"tags,omitempty"`
-	SSHKeys      []PacketSSHKeySpec `json:"sshKeys,omitempty"`
-	UserData     string             `json:"userdata,omitempty"`
+	Facility     []string `json:"facility"`
+	MachineType  string   `json:"machineType"`
+	BillingCycle string   `json:"billingCycle"`
+	OS           string   `json:"OS"`
+	ProjectID    string   `json:"projectID"`
+	Tags         []string `json:"tags,omitempty"`
+	SSHKeys      []string `json:"sshKeys,omitempty"`
+	UserData     string   `json:"userdata,omitempty"`
 
 	SecretRef *corev1.SecretReference `json:"secretRef,omitempty"`
-}
-
-// PacketSSHKeySpec describes ssh keys for packet
-type PacketSSHKeySpec struct {
-	ID          string `json:"id"`
-	Fingerprint string `json:"fingerprint"`
 }
 
 /********************** MetalMachineClass APIs ***************/
@@ -1325,20 +1319,14 @@ type MetalMachineClassList struct {
 
 // MetalMachineClassSpec is the specification of a cluster.
 type MetalMachineClassSpec struct {
-	Partition string            `json:"partition"`
-	Size      string            `json:"size"`
-	Image     string            `json:"image"`
-	Tenant    string            `json:"tenant"`
-	Project   string            `json:"project"`
-	Tags      map[string]string `json:"tags,omitempty"`
-	SSHKeys   []MetalSSHKeySpec `json:"sshKeys,omitempty"`
-	UserData  string            `json:"userdata,omitempty"`
+	Partition string   `json:"partition"`
+	Size      string   `json:"size"`
+	Image     string   `json:"image"`
+	Tenant    string   `json:"tenant"`
+	Project   string   `json:"project"`
+	Tags      []string `json:"tags,omitempty"`
+	SSHKeys   []string `json:"sshKeys,omitempty"`
+	UserData  string   `json:"userdata,omitempty"`
 
 	SecretRef *corev1.SecretReference `json:"secretRef,omitempty"`
-}
-
-// MetalSSHKeySpec describes ssh keys for packet
-type MetalSSHKeySpec struct {
-	ID          string `json:"id"`
-	Fingerprint string `json:"fingerprint"`
 }
