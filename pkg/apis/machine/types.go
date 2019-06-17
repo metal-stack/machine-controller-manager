@@ -1279,15 +1279,9 @@ type MetalMachineClassSpec struct {
 	Image     string // required
 	Tenant    string // required
 	Project   string // required
-	Tags      map[string]string
-	SSHKeys   []MetalSSHKeySpec
+	Tags      []string
+	SSHKeys   []string
 	UserData  string
 
 	SecretRef *corev1.SecretReference
-}
-
-// MetalSSHKeySpec represents a single ssh key
-type MetalSSHKeySpec struct {
-	ID          string
-	Fingerprint string
 }
