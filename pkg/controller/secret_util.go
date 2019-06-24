@@ -65,6 +65,7 @@ func (c *controller) existsMachineClassForSecret(name string) (bool, error) {
 		len(packetMachineClasses) == 0 &&
 		len(metalMachineClasses) == 0 &&
 		len(alicloudMachineClasses) == 0 &&
+		len(metalMachineClasses) == 0 &&
 		len(awsMachineClasses) == 0 {
 		return false, nil
 	}
