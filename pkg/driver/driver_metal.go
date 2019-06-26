@@ -50,7 +50,7 @@ func (d *MetalDriver) Create() (string, string, error) {
 		return "", "", err
 	}
 	createRequest := &metalgo.MachineCreateRequest{
-		Description:   d.MachineName + " created by gardener.",
+		Description:   d.MachineName + " created by Gardener.",
 		Name:          d.MachineName,
 		Hostname:      d.MachineName,
 		UserData:      d.UserData,
@@ -118,11 +118,12 @@ func (d *MetalDriver) GetVMs(machineID string) (VMs, error) {
 	}
 	if machineID == "" {
 		listRequest := &metalgo.MachineListRequest{
-			Project: d.MetalMachineClass.Spec.Project,
+			Project:   &d.MetalMachineClass.Spec.Project,
+			Partition: &d.MetalMachineClass.Spec.Partition,
 		}
 		mlr, err := svc.MachineList(listRequest)
 		if err != nil {
-			glog.Errorf("Could not list devices for project %s: %v", d.MetalMachineClass.Spec.Project, err)
+			glog.Errorf("Could not list machines for project %s in partition:%s: %v", d.MetalMachineClass.Spec.Project, d.MetalMachineClass.Spec.Partition, err)
 			return nil, err
 		}
 		for _, m := range mlr.Machines {
@@ -144,7 +145,7 @@ func (d *MetalDriver) GetVMs(machineID string) (VMs, error) {
 		machineID = d.decodeMachineID(machineID)
 		mgr, err := svc.MachineGet(machineID)
 		if err != nil {
-			glog.Errorf("Could not get device %s: %v", machineID, err)
+			glog.Errorf("Could not get machine %s: %v", machineID, err)
 			return nil, err
 		}
 		listOfVMs[machineID] = *mgr.Machine.Allocation.Hostname
