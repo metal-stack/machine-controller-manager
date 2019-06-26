@@ -24,12 +24,13 @@ type MachineCreateRequest struct {
 	UUID          string
 }
 
-// MachineListRequest contains data for a machine listing
+// MachineListRequest contains criteria for a machine listing
 type MachineListRequest struct {
-	Tenant    string
-	Project   string
-	Partition string
+	Tenant    *string
+	Project   *string
+	Partition *string
 	Tags      []string
+	Mac       *string
 }
 
 // MachineCreateResponse is returned when a machine was created
@@ -123,15 +124,28 @@ func (d *Driver) MachineDelete(machineID string) (*MachineDeleteResponse, error)
 }
 
 // MachineList will list all machines
-func (d *Driver) MachineList(mcr *MachineListRequest) (*MachineListResponse, error) {
+func (d *Driver) MachineList(mlr *MachineListRequest) (*MachineListResponse, error) {
 	response := &MachineListResponse{}
+	var err error
 
-	listMachine := machine.NewListMachinesParams()
-	resp, err := d.machine.ListMachines(listMachine, d.auth)
+	if mlr == nil {
+		var resp *machine.ListMachinesOK
+		listMachine := machine.NewListMachinesParams()
+		resp, err = d.machine.ListMachines(listMachine, d.auth)
+		response.Machines = resp.Payload
+	} else {
+		var resp *machine.SearchMachineOK
+		searchMachine := machine.NewSearchMachineParams()
+		searchMachine.WithMac(mlr.Mac)
+		searchMachine.WithPartition(mlr.Partition)
+		searchMachine.WithProject(mlr.Project)
+		// FIXME implement by tags on metal-api
+		resp, err = d.machine.SearchMachine(searchMachine, d.auth)
+		response.Machines = resp.Payload
+	}
 	if err != nil {
 		return response, err
 	}
-	response.Machines = resp.Payload
 	return response, nil
 }
 
@@ -225,32 +239,33 @@ func (d *Driver) MachineBootBios(machineID string) (*MachineBiosResponse, error)
 	return response, nil
 }
 
+// MachineLock will lock a machine from being destroyed
+func (d *Driver) MachineLock(machineID, description string) (*MachineStateResponse, error) {
+	return d.machineState(machineID, "LOCKED", description)
+}
+
+// MachineUnLock will unlock a machine
+func (d *Driver) MachineUnLock(machineID string) (*MachineStateResponse, error) {
+	return d.machineState(machineID, "", "")
+}
+
 // MachineReserve will reserve a machine for single allocation
 func (d *Driver) MachineReserve(machineID, description string) (*MachineStateResponse, error) {
-	machineState := machine.NewSetMachineStateParams()
-	machineState.ID = machineID
-	reserved := "RESERVED"
-	machineState.Body = &models.V1MachineState{
-		Value:       &reserved,
-		Description: &description,
-	}
-
-	response := &MachineStateResponse{}
-	resp, err := d.machine.SetMachineState(machineState, d.auth)
-	if err != nil {
-		return response, err
-	}
-	response.Machine = resp.Payload
-	return response, nil
+	return d.machineState(machineID, "RESERVED", description)
 }
 
 // MachineUnReserve will unreserve a machine
 func (d *Driver) MachineUnReserve(machineID string) (*MachineStateResponse, error) {
+	return d.machineState(machineID, "", "")
+}
+
+// MachineReserve will reserve a machine for single allocation
+func (d *Driver) machineState(machineID, state, description string) (*MachineStateResponse, error) {
 	machineState := machine.NewSetMachineStateParams()
 	machineState.ID = machineID
-	reserved := ""
 	machineState.Body = &models.V1MachineState{
-		Value: &reserved,
+		Value:       &state,
+		Description: &description,
 	}
 
 	response := &MachineStateResponse{}
