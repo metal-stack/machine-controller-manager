@@ -1286,15 +1286,6 @@ type PacketMachineClassSpec struct {
 	SecretRef *corev1.SecretReference `json:"secretRef,omitempty"`
 }
 
-<<<<<<< HEAD
-=======
-// PacketSSHKeySpec describes ssh keys for packet
-type PacketSSHKeySpec struct {
-	ID          string `json:"id"`
-	Fingerprint string `json:"fingerprint"`
-}
-
->>>>>>> 052c7e8a36509a335e8fa830299d54de226b7999
 /********************** MetalMachineClass APIs ***************/
 
 // +genclient
