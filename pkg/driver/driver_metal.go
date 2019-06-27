@@ -66,7 +66,7 @@ func (d *MetalDriver) Create() (string, string, error) {
 	mcr, err := svc.MachineCreate(createRequest)
 	if err != nil {
 		glog.Errorf("Could not create machine: %v", err)
-		return "", "", err
+		return "Error", "Error", err
 	}
 	return d.encodeMachineID(*mcr.Machine.Partition.ID, *mcr.Machine.ID), *mcr.Machine.Allocation.Name, nil
 }
