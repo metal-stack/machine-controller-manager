@@ -450,7 +450,7 @@
   revision = "0b12d6b5"
 
 [[projects]]
-  digest = "1:8e36686e8b139f8fe240c1d5cf3a145bc675c22ff8e707857cdd3ae17b00d728"
+  digest = "0:"
   name = "github.com/json-iterator/go"
   packages = ["."]
   pruneopts = "NUT"
@@ -500,7 +500,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a102529669f629dfe1b35b9df2aefc336e3b6ce75ab134e5855bdc33a04a065c"
+  digest = "1:09089e9adee16c3f1442bf4ba6f629a5a0ef2e13d75ca3a0862c1f601858c96a"
   name = "github.com/metal-pod/metal-go"
   packages = [
     ".",
@@ -515,7 +515,7 @@
     "api/models",
   ]
   pruneopts = "NUT"
-  revision = "1daaf4e14efc9a182bb8b293a7dee1221d5d82ca"
+  revision = "52567734176ef99a2dfbd3024a64a6c082d9c23c"
 
 [[projects]]
   branch = "master"

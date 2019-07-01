@@ -117,11 +117,11 @@ func (d *MetalDriver) GetVMs(machineID string) (VMs, error) {
 		return nil, err
 	}
 	if machineID == "" {
-		listRequest := &metalgo.MachineListRequest{
-			Project:   &d.MetalMachineClass.Spec.Project,
-			Partition: &d.MetalMachineClass.Spec.Partition,
+		findRequest := &metalgo.MachineFindRequest{
+			AllocationProject: &d.MetalMachineClass.Spec.Project,
+			PartitionID:       &d.MetalMachineClass.Spec.Partition,
 		}
-		mlr, err := svc.MachineList(listRequest)
+		mlr, err := svc.MachineFind(findRequest)
 		if err != nil {
 			glog.Errorf("Could not list machines for project %s in partition:%s: %v", d.MetalMachineClass.Spec.Project, d.MetalMachineClass.Spec.Partition, err)
 			return nil, err
