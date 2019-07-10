@@ -70,6 +70,10 @@ func (d *AWSDriver) Create() (string, string, error) {
 	}
 	metrics.APIRequestCount.With(prometheus.Labels{"provider": "aws", "service": "ecs"}).Inc()
 
+	if len(output.Images) < 1 {
+		return "Error", "Error", fmt.Errorf("Image %s not found", *imageID)
+	}
+
 	var blkDeviceMappings []*ec2.BlockDeviceMapping
 	deviceName := output.Images[0].RootDeviceName
 	volumeSize := d.AWSMachineClass.Spec.BlockDevices[0].Ebs.VolumeSize
@@ -304,4 +308,19 @@ func (d *AWSDriver) encodeMachineID(region, machineID string) string {
 func (d *AWSDriver) decodeMachineID(id string) string {
 	splitProviderID := strings.Split(id, "/")
 	return splitProviderID[len(splitProviderID)-1]
+}
+
+// GetVolNames parses volume names from pv specs
+func (d *AWSDriver) GetVolNames(specs []corev1.PersistentVolumeSpec) ([]string, error) {
+	names := []string{}
+	for i := range specs {
+		spec := &specs[i]
+		if spec.AWSElasticBlockStore == nil {
+			// Not an aws volume
+			continue
+		}
+		name := spec.AWSElasticBlockStore.VolumeID
+		names = append(names, name)
+	}
+	return names, nil
 }
