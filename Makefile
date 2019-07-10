@@ -64,7 +64,7 @@ release: build build-local docker-image docker-login docker-push rename-binaries
 
 .PHONY: docker-image
 docker-image:
-	@if [[ ! -f bin/rel/machine-controller-manager ]]; then echo "No binary found. Please run 'make build'"; false; fi
+	@if [ ! -f bin/rel/machine-controller-manager ]; then echo "No binary found. Please run 'make build'"; false; fi
 	@docker build -t $(IMAGE_REPOSITORY):$(IMAGE_TAG) --rm .
 
 .PHONY: docker-login
@@ -78,8 +78,8 @@ docker-push:
 
 .PHONY: rename-binaries
 rename-binaries:
-	@if [[ -f bin/machine-controller-manager ]]; then cp bin/machine-controller-manager machine-controller-manager-darwin-amd64; fi
-	@if [[ -f bin/rel/machine-controller-manager ]]; then cp bin/rel/machine-controller-manager machine-controller-manager-linux-amd64; fi
+	@if [ -f bin/machine-controller-manager ]; then cp bin/machine-controller-manager machine-controller-manager-darwin-amd64; fi
+	@if [ -f bin/rel/machine-controller-manager ]; then cp bin/rel/machine-controller-manager machine-controller-manager-linux-amd64; fi
 
 .PHONY: clean
 clean:
