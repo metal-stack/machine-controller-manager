@@ -153,6 +153,12 @@ func (d *MetalDriver) GetVMs(machineID string) (VMs, error) {
 	return listOfVMs, nil
 }
 
+// GetVolNames parses volume names from pv specs
+func (d *MetalDriver) GetVolNames(specs []corev1.PersistentVolumeSpec) ([]string, error) {
+	names := []string{}
+	return names, fmt.Errorf("Not implemented yet")
+}
+
 // Helper function to create SVC
 func (d *MetalDriver) createSVC() (*metalgo.Driver, error) {
 	token := strings.TrimSpace(string(d.CloudConfig.Data[v1alpha1.MetalAPIKey]))
