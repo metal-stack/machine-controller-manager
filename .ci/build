@@ -49,7 +49,8 @@ if [[ -z "$LOCAL_BUILD" ]]; then
     -a \
     -v \
     -o ${BINARY_PATH}/rel/machine-controller-manager \
-    cmd/machine-controller-manager/controller_manager.go
+    cmd/machine-controller-manager/controller_manager.go \
+  && strip ${BINARY_PATH}/rel/machine-controller-manager
 
 # If the LOCAL_BUILD environment variable is set, we simply run `go build`.
 else
