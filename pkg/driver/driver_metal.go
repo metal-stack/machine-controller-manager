@@ -78,8 +78,34 @@ func (d *MetalDriver) Delete() error {
 	if err != nil {
 		return err
 	}
+
+	hostname := d.MachineName
+	project := d.MetalMachineClass.Spec.Project
+	partition := d.MetalMachineClass.Spec.Partition
 	machineID := d.decodeMachineID(d.MachineID)
-	_, err = svc.MachineDelete(machineID)
+
+	mfr := &metalgo.MachineFindRequest{
+		ID:                 &machineID,
+		AllocationHostname: &hostname,
+		AllocationProject:  &project,
+		PartitionID:        &partition,
+	}
+	m, err := svc.MachineFind(mfr)
+	if err != nil {
+		glog.Errorf("Error searching machine %s: in project:%s partition: %s hostname: %s %v", d.MachineID, project, partition, hostname, err)
+		return err
+	}
+	if len(m.Machines) > 1 {
+		errMsg := fmt.Sprintf("Error searching machine %s: in project: %s partition: %s hostname: %s, more than one search result %d", d.MachineID, project, partition, hostname, len(m.Machines))
+		glog.Errorf(errMsg)
+		return fmt.Errorf(errMsg)
+	}
+	if len(m.Machines) == 0 {
+		glog.Infof("no machine %s: in project:%s partition: %s hostname: %s found", d.MachineID, project, partition, hostname)
+		return nil
+	}
+	id := m.Machines[0].ID
+	_, err = svc.MachineDelete(*id)
 	if err != nil {
 		glog.Errorf("Could not terminate machine %s: %v", d.MachineID, err)
 		return err
