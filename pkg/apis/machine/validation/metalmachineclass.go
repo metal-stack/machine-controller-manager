@@ -93,18 +93,18 @@ func validateMetalClassSpecTags(tags []string, fldPath *field.Path) field.ErrorL
 	nodeRole := ""
 
 	for _, key := range tags {
-		if strings.Contains(key, "kubernetes.io/cluster/") {
+		if strings.Contains(key, "kubernetes.io/cluster=") {
 			clusterName = key
-		} else if strings.Contains(key, "kubernetes.io/role/") {
+		} else if strings.Contains(key, "kubernetes.io/role=") {
 			nodeRole = key
 		}
 	}
 
 	if clusterName == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("kubernetes.io/cluster/"), "Tag required of the form kubernetes.io/cluster/****"))
+		allErrs = append(allErrs, field.Required(fldPath.Child("kubernetes.io/cluster="), "Tag required of the form kubernetes.io/cluster=****"))
 	}
 	if nodeRole == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("kubernetes.io/role/"), "Tag required of the form kubernetes.io/role/****"))
+		allErrs = append(allErrs, field.Required(fldPath.Child("kubernetes.io/role="), "Tag required of the form kubernetes.io/role=****"))
 	}
 
 	return allErrs
