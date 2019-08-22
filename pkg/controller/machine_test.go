@@ -21,6 +21,7 @@ import (
 	"time"
 
 	machineapi "github.com/gardener/machine-controller-manager/pkg/apis/machine"
+	"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	machinev1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/gardener/machine-controller-manager/pkg/apis/machine/validation"
 	fakemachineapi "github.com/gardener/machine-controller-manager/pkg/client/clientset/versioned/typed/machine/v1alpha1/fake"
@@ -370,7 +371,7 @@ var _ = Describe("machine", func() {
 			Entry("non-existing machine class", &data{
 				setup: setup{
 					aws: []*machinev1.AWSMachineClass{
-						&machinev1.AWSMachineClass{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 						},
 					},
@@ -386,12 +387,12 @@ var _ = Describe("machine", func() {
 			Entry("non-existing secret", &data{
 				setup: setup{
 					secrets: []*corev1.Secret{
-						&corev1.Secret{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 						},
 					},
 					aws: []*machinev1.AWSMachineClass{
-						&machinev1.AWSMachineClass{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 							Spec: machinev1.AWSMachineClassSpec{
 								SecretRef: newSecretReference(objMeta, 0),
@@ -416,12 +417,12 @@ var _ = Describe("machine", func() {
 			Entry("valid", &data{
 				setup: setup{
 					secrets: []*corev1.Secret{
-						&corev1.Secret{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 						},
 					},
 					aws: []*machinev1.AWSMachineClass{
-						&machinev1.AWSMachineClass{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 							Spec: machinev1.AWSMachineClassSpec{
 								SecretRef: newSecretReference(objMeta, 0),
@@ -527,12 +528,12 @@ var _ = Describe("machine", func() {
 			Entry("OpenStackSimple", &data{
 				setup: setup{
 					secrets: []*corev1.Secret{
-						&corev1.Secret{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 						},
 					},
 					openstack: []*machinev1.OpenStackMachineClass{
-						&machinev1.OpenStackMachineClass{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 							Spec: machinev1.OpenStackMachineClassSpec{
 								SecretRef: newSecretReference(objMeta, 0),
@@ -578,12 +579,12 @@ var _ = Describe("machine", func() {
 			Entry("AWSSimple", &data{
 				setup: setup{
 					secrets: []*corev1.Secret{
-						&corev1.Secret{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 						},
 					},
 					aws: []*machinev1.AWSMachineClass{
-						&machinev1.AWSMachineClass{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 							Spec: machinev1.AWSMachineClassSpec{
 								SecretRef: newSecretReference(objMeta, 0),
@@ -634,11 +635,12 @@ var _ = Describe("machine", func() {
 			fakeResourceActions *customfake.ResourceActions
 		}
 		type action struct {
-			machine        string
-			fakeProviderID string
-			fakeNodeName   string
-			fakeError      error
-			forceDelete    bool
+			machine                 string
+			fakeProviderID          string
+			fakeNodeName            string
+			fakeError               error
+			forceDeleteLabelPresent bool
+			fakeMachineStatus       *machinev1.MachineStatus
 		}
 		type expect struct {
 			machine        *machinev1.Machine
@@ -711,11 +713,18 @@ var _ = Describe("machine", func() {
 				machine, err = controller.controlMachineClient.Machines(objMeta.Namespace).Get(action.machine, metav1.GetOptions{})
 				Expect(err).ToNot(HaveOccurred())
 
-				if data.action.forceDelete {
+				if data.action.forceDeleteLabelPresent {
 					// Add labels for force deletion
 					clone := machine.DeepCopy()
 					clone.Labels["force-deletion"] = "True"
 					machine, err = controller.controlMachineClient.Machines(objMeta.Namespace).Update(clone)
+					Expect(err).ToNot(HaveOccurred())
+				}
+
+				if data.action.fakeMachineStatus != nil {
+					clone := machine.DeepCopy()
+					clone.Status = *data.action.fakeMachineStatus
+					machine, err = controller.controlMachineClient.Machines(objMeta.Namespace).UpdateStatus(clone)
 					Expect(err).ToNot(HaveOccurred())
 				}
 
@@ -731,23 +740,29 @@ var _ = Describe("machine", func() {
 					Expect(err).ToNot(HaveOccurred())
 				}
 
-				machine, err = controller.controlMachineClient.Machines(machine.Namespace).Get(machine.Name, metav1.GetOptions{})
+				node, nodeErr := controller.targetCoreClient.CoreV1().Nodes().Get(machine.Status.Node, metav1.GetOptions{})
+				machine, machineErr := controller.controlMachineClient.Machines(machine.Namespace).Get(machine.Name, metav1.GetOptions{})
+
 				if data.expect.machineDeleted {
-					Expect(err).To(HaveOccurred())
+					Expect(machineErr).To(HaveOccurred())
+					Expect(nodeErr).To(HaveOccurred())
 				} else {
-					Expect(err).ToNot(HaveOccurred())
+					Expect(machineErr).ToNot(HaveOccurred())
 					Expect(machine).ToNot(BeNil())
+
+					Expect(nodeErr).ToNot(HaveOccurred())
+					Expect(node).ToNot(BeNil())
 				}
 			},
-			Entry("Machine deletion", &data{
+			Entry("Simple machine deletion", &data{
 				setup: setup{
 					secrets: []*corev1.Secret{
-						&corev1.Secret{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 						},
 					},
 					aws: []*machinev1.AWSMachineClass{
-						&machinev1.AWSMachineClass{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 							Spec: machinev1.AWSMachineClassSpec{
 								SecretRef: newSecretReference(objMeta, 0),
@@ -778,12 +793,12 @@ var _ = Describe("machine", func() {
 			Entry("Machine deletion when drain fails", &data{
 				setup: setup{
 					secrets: []*corev1.Secret{
-						&corev1.Secret{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 						},
 					},
 					aws: []*machinev1.AWSMachineClass{
-						&machinev1.AWSMachineClass{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 							Spec: machinev1.AWSMachineClassSpec{
 								SecretRef: newSecretReference(objMeta, 0),
@@ -816,15 +831,94 @@ var _ = Describe("machine", func() {
 					machineDeleted: false,
 				},
 			}),
-			Entry("Machine force deletion", &data{
+			Entry("Machine force deletion label is present", &data{
 				setup: setup{
 					secrets: []*corev1.Secret{
-						&corev1.Secret{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 						},
 					},
 					aws: []*machinev1.AWSMachineClass{
-						&machinev1.AWSMachineClass{
+						{
+							ObjectMeta: *newObjectMeta(objMeta, 0),
+							Spec: machinev1.AWSMachineClassSpec{
+								SecretRef: newSecretReference(objMeta, 0),
+							},
+						},
+					},
+					machines: newMachines(1, &machinev1.MachineTemplateSpec{
+						ObjectMeta: *newObjectMeta(objMeta, 0),
+						Spec: machinev1.MachineSpec{
+							Class: machinev1.ClassSpec{
+								Kind: "AWSMachineClass",
+								Name: "machine-0",
+							},
+						},
+					}, nil, nil, nil, nil),
+				},
+				action: action{
+					machine:                 "machine-0",
+					fakeProviderID:          "fakeID-0",
+					fakeNodeName:            "fakeNode-0",
+					fakeError:               nil,
+					forceDeleteLabelPresent: true,
+				},
+				expect: expect{
+					errOccurred:    false,
+					machineDeleted: true,
+				},
+			}),
+			Entry("Machine force deletion label is present and when drain call fails (APIServer call fails)", &data{
+				setup: setup{
+					secrets: []*corev1.Secret{
+						{
+							ObjectMeta: *newObjectMeta(objMeta, 0),
+						},
+					},
+					aws: []*machinev1.AWSMachineClass{
+						{
+							ObjectMeta: *newObjectMeta(objMeta, 0),
+							Spec: machinev1.AWSMachineClassSpec{
+								SecretRef: newSecretReference(objMeta, 0),
+							},
+						},
+					},
+					machines: newMachines(1, &machinev1.MachineTemplateSpec{
+						ObjectMeta: *newObjectMeta(objMeta, 0),
+						Spec: machinev1.MachineSpec{
+							Class: machinev1.ClassSpec{
+								Kind: "AWSMachineClass",
+								Name: "machine-0",
+							},
+						},
+					}, nil, nil, nil, nil),
+					fakeResourceActions: &customfake.ResourceActions{
+						Node: customfake.Actions{
+							Update: "Failed to update nodes",
+						},
+					},
+				},
+				action: action{
+					machine:                 "machine-0",
+					fakeProviderID:          "fakeID-0",
+					fakeNodeName:            "fakeNode-0",
+					fakeError:               nil,
+					forceDeleteLabelPresent: true,
+				},
+				expect: expect{
+					errOccurred:    false,
+					machineDeleted: true,
+				},
+			}),
+			Entry("Machine deletion when timeout occurred", &data{
+				setup: setup{
+					secrets: []*corev1.Secret{
+						{
+							ObjectMeta: *newObjectMeta(objMeta, 0),
+						},
+					},
+					aws: []*machinev1.AWSMachineClass{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 							Spec: machinev1.AWSMachineClassSpec{
 								SecretRef: newSecretReference(objMeta, 0),
@@ -846,22 +940,86 @@ var _ = Describe("machine", func() {
 					fakeProviderID: "fakeID-0",
 					fakeNodeName:   "fakeNode-0",
 					fakeError:      nil,
-					forceDelete:    true,
+					fakeMachineStatus: &machinev1.MachineStatus{
+						Node: "fakeNode-0",
+						LastOperation: machinev1.LastOperation{
+							Description:    "Deleting machine from cloud provider",
+							State:          v1alpha1.MachineStateProcessing,
+							Type:           v1alpha1.MachineOperationDelete,
+							LastUpdateTime: metav1.Now(),
+						},
+						CurrentStatus: machinev1.CurrentStatus{
+							Phase:         v1alpha1.MachineTerminating,
+							TimeoutActive: false,
+							// Updating last update time to 30 minutes before now
+							LastUpdateTime: metav1.NewTime(time.Now().Add(-30 * time.Minute)),
+						},
+					},
 				},
 				expect: expect{
 					errOccurred:    false,
 					machineDeleted: true,
 				},
 			}),
-			Entry("Machine force deletion when drain call fails (APIServer call fails)", &data{
+			Entry("Machine deletion when last drain failed", &data{
 				setup: setup{
 					secrets: []*corev1.Secret{
-						&corev1.Secret{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 						},
 					},
 					aws: []*machinev1.AWSMachineClass{
-						&machinev1.AWSMachineClass{
+						{
+							ObjectMeta: *newObjectMeta(objMeta, 0),
+							Spec: machinev1.AWSMachineClassSpec{
+								SecretRef: newSecretReference(objMeta, 0),
+							},
+						},
+					},
+					machines: newMachines(1, &machinev1.MachineTemplateSpec{
+						ObjectMeta: *newObjectMeta(objMeta, 0),
+						Spec: machinev1.MachineSpec{
+							Class: machinev1.ClassSpec{
+								Kind: "AWSMachineClass",
+								Name: "machine-0",
+							},
+						},
+					}, nil, nil, nil, nil),
+				},
+				action: action{
+					machine:        "machine-0",
+					fakeProviderID: "fakeID-0",
+					fakeNodeName:   "fakeNode-0",
+					fakeError:      nil,
+					fakeMachineStatus: &machinev1.MachineStatus{
+						Node: "fakeNode-0",
+						LastOperation: machinev1.LastOperation{
+							Description:    "Drain failed - for random reason",
+							State:          v1alpha1.MachineStateFailed,
+							Type:           v1alpha1.MachineOperationDelete,
+							LastUpdateTime: metav1.Now(),
+						},
+						CurrentStatus: machinev1.CurrentStatus{
+							Phase:          v1alpha1.MachineTerminating,
+							TimeoutActive:  false,
+							LastUpdateTime: metav1.NewTime(time.Now().Add(-2 * time.Minute)),
+						},
+					},
+				},
+				expect: expect{
+					errOccurred:    false,
+					machineDeleted: true,
+				},
+			}),
+			Entry("Machine deletion when last drain failed and current drain call also fails (APIServer call fails)", &data{
+				setup: setup{
+					secrets: []*corev1.Secret{
+						{
+							ObjectMeta: *newObjectMeta(objMeta, 0),
+						},
+					},
+					aws: []*machinev1.AWSMachineClass{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 							Spec: machinev1.AWSMachineClassSpec{
 								SecretRef: newSecretReference(objMeta, 0),
@@ -888,7 +1046,20 @@ var _ = Describe("machine", func() {
 					fakeProviderID: "fakeID-0",
 					fakeNodeName:   "fakeNode-0",
 					fakeError:      nil,
-					forceDelete:    true,
+					fakeMachineStatus: &machinev1.MachineStatus{
+						Node: "fakeNode-0",
+						LastOperation: machinev1.LastOperation{
+							Description:    "Drain failed - for random reason",
+							State:          v1alpha1.MachineStateFailed,
+							Type:           v1alpha1.MachineOperationDelete,
+							LastUpdateTime: metav1.Now(),
+						},
+						CurrentStatus: machinev1.CurrentStatus{
+							Phase:          v1alpha1.MachineTerminating,
+							TimeoutActive:  false,
+							LastUpdateTime: metav1.NewTime(time.Now().Add(-2 * time.Minute)),
+						},
+					},
 				},
 				expect: expect{
 					errOccurred:    false,
@@ -1242,7 +1413,7 @@ var _ = Describe("machine", func() {
 							LastUpdateTime: metav1.Now(),
 						},
 						Conditions: []corev1.NodeCondition{
-							corev1.NodeCondition{
+							{
 								Message: "kubelet is posting ready status",
 								Reason:  "KubeletReady",
 								Status:  "True",
@@ -1274,7 +1445,7 @@ var _ = Describe("machine", func() {
 							LastUpdateTime: metav1.Now(),
 						},
 						Conditions: []corev1.NodeCondition{
-							corev1.NodeCondition{
+							{
 								Message: "kubelet is posting ready status",
 								Reason:  "KubeletReady",
 								Status:  "True",
@@ -1302,7 +1473,7 @@ var _ = Describe("machine", func() {
 							LastUpdateTime: metav1.Now(),
 						},
 						Conditions: []corev1.NodeCondition{
-							corev1.NodeCondition{
+							{
 								Message: "kubelet is not ready",
 								Reason:  "KubeletReady",
 								Status:  "False",
@@ -1311,11 +1482,11 @@ var _ = Describe("machine", func() {
 						},
 					}, nil, nil, nil),
 					nodes: []*corev1.Node{
-						&corev1.Node{
+						{
 							ObjectMeta: *newObjectMeta(objMeta, 0),
 							Status: corev1.NodeStatus{
 								Conditions: []corev1.NodeCondition{
-									corev1.NodeCondition{
+									{
 										Message: "kubelet is posting ready status",
 										Reason:  "KubeletReady",
 										Status:  "True",
@@ -1346,7 +1517,7 @@ var _ = Describe("machine", func() {
 							LastUpdateTime: metav1.Now(),
 						},
 						Conditions: []corev1.NodeCondition{
-							corev1.NodeCondition{
+							{
 								Message: "kubelet is posting ready status",
 								Reason:  "KubeletReady",
 								Status:  "True",
@@ -1364,7 +1535,7 @@ var _ = Describe("machine", func() {
 						Node: "node",
 					}, nil, nil, nil),
 					nodes: []*corev1.Node{
-						&corev1.Node{
+						{
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "node-0",
 							},

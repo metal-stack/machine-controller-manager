@@ -89,7 +89,6 @@ func (c *controller) getMachineMachineSets(machine *v1alpha1.Machine) ([]*v1alph
 			continue
 		}
 		machineSets = append(machineSets, machineSet)
-		//glog.Info("D", len(machineSets))
 	}
 
 	if len(machineSets) == 0 {
@@ -340,7 +339,7 @@ func (c *controller) manageReplicas(allMachines []*v1alpha1.Machine, machineSet 
 	c.terminateMachines(staleMachines, machineSet)
 
 	diff := len(activeMachines) - int(machineSet.Spec.Replicas)
-	glog.V(3).Infof("Difference between current active replicas and desired replicas - %d", diff)
+	glog.V(4).Infof("Difference between current active replicas and desired replicas - %d", diff)
 
 	if diff < 0 {
 		// If MachineSet is frozen and no deletion timestamp, don't process it
@@ -430,9 +429,9 @@ func (c *controller) manageReplicas(allMachines []*v1alpha1.Machine, machineSet 
 // invoked concurrently with the same key.
 func (c *controller) reconcileClusterMachineSet(key string) error {
 	startTime := time.Now()
-	glog.V(3).Infof("Start syncing %q", key)
+	glog.V(4).Infof("Start syncing machine set %q", key)
 	defer func() {
-		glog.V(3).Infof("Finished syncing %q (%v)", key, time.Since(startTime))
+		glog.V(4).Infof("Finished syncing machine set %q (%v)", key, time.Since(startTime))
 	}()
 
 	_, name, err := cache.SplitMetaNamespaceKey(key)

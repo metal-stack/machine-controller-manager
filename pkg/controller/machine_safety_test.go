@@ -29,11 +29,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-var (
-	fiveSecondsBeforeNow = time.Now().Add(-time.Duration(5 * time.Second))
-	fiveMinutesBeforeNow = time.Now().Add(-time.Duration(5 * time.Minute))
-)
-
 var _ = Describe("#machine_safety", func() {
 
 	DescribeTable("##freezeMachineSetsAndDeployments",
@@ -269,7 +264,7 @@ var _ = Describe("#machine_safety", func() {
 					"machine": "test",
 				},
 				machineSetConditions: []v1alpha1.MachineSetCondition{
-					v1alpha1.MachineSetCondition{
+					{
 						Type:    v1alpha1.MachineSetFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -279,7 +274,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze": "True",
 				},
 				machineDeploymentConditions: []v1alpha1.MachineDeploymentCondition{
-					v1alpha1.MachineDeploymentCondition{
+					{
 						Type:    v1alpha1.MachineDeploymentFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -294,7 +289,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze": "True",
 				},
 				machineSetConditions: []v1alpha1.MachineSetCondition{
-					v1alpha1.MachineSetCondition{
+					{
 						Type:    v1alpha1.MachineSetFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -304,7 +299,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze": "True",
 				},
 				machineDeploymentConditions: []v1alpha1.MachineDeploymentCondition{
-					v1alpha1.MachineDeploymentCondition{
+					{
 						Type:    v1alpha1.MachineDeploymentFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -325,7 +320,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze": "True",
 				},
 				machineSetConditions: []v1alpha1.MachineSetCondition{
-					v1alpha1.MachineSetCondition{
+					{
 						Type:    v1alpha1.MachineSetFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -335,7 +330,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze": "True",
 				},
 				machineDeploymentConditions: []v1alpha1.MachineDeploymentCondition{
-					v1alpha1.MachineDeploymentCondition{
+					{
 						Type:    v1alpha1.MachineDeploymentFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -348,7 +343,7 @@ var _ = Describe("#machine_safety", func() {
 					"machine": "test",
 				},
 				machineSetConditions: []v1alpha1.MachineSetCondition{
-					v1alpha1.MachineSetCondition{
+					{
 						Type:    v1alpha1.MachineSetFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -358,7 +353,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze": "True",
 				},
 				machineDeploymentConditions: []v1alpha1.MachineDeploymentCondition{
-					v1alpha1.MachineDeploymentCondition{
+					{
 						Type:    v1alpha1.MachineDeploymentFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -370,7 +365,7 @@ var _ = Describe("#machine_safety", func() {
 			setup: setup{
 				machineReplicas: 3,
 				machineSetConditions: []v1alpha1.MachineSetCondition{
-					v1alpha1.MachineSetCondition{
+					{
 						Type:    v1alpha1.MachineSetFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -402,14 +397,14 @@ var _ = Describe("#machine_safety", func() {
 			setup: setup{
 				machineReplicas: 3,
 				machineSetConditions: []v1alpha1.MachineSetCondition{
-					v1alpha1.MachineSetCondition{
+					{
 						Type:    v1alpha1.MachineSetFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
 					},
 				},
 				machineDeploymentConditions: []v1alpha1.MachineDeploymentCondition{
-					v1alpha1.MachineDeploymentCondition{
+					{
 						Type:    v1alpha1.MachineDeploymentFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -452,7 +447,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze": "True",
 				},
 				machineSetConditions: []v1alpha1.MachineSetCondition{
-					v1alpha1.MachineSetCondition{
+					{
 						Type:    v1alpha1.MachineSetFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -462,7 +457,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze": "True",
 				},
 				machineDeploymentConditions: []v1alpha1.MachineDeploymentCondition{
-					v1alpha1.MachineDeploymentCondition{
+					{
 						Type:    v1alpha1.MachineDeploymentFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -478,7 +473,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze": "True",
 				},
 				machineDeploymentConditions: []v1alpha1.MachineDeploymentCondition{
-					v1alpha1.MachineDeploymentCondition{
+					{
 						Type:    v1alpha1.MachineDeploymentFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -493,7 +488,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze": "True",
 				},
 				machineSetConditions: []v1alpha1.MachineSetCondition{
-					v1alpha1.MachineSetCondition{
+					{
 						Type:    v1alpha1.MachineSetFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -506,7 +501,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze": "True",
 				},
 				machineDeploymentConditions: []v1alpha1.MachineDeploymentCondition{
-					v1alpha1.MachineDeploymentCondition{
+					{
 						Type:    v1alpha1.MachineDeploymentFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -533,7 +528,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze": "True",
 				},
 				machineSetConditions: []v1alpha1.MachineSetCondition{
-					v1alpha1.MachineSetCondition{
+					{
 						Type:    v1alpha1.MachineSetFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -546,7 +541,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze": "True",
 				},
 				machineDeploymentConditions: []v1alpha1.MachineDeploymentCondition{
-					v1alpha1.MachineDeploymentCondition{
+					{
 						Type:    v1alpha1.MachineDeploymentFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -566,7 +561,7 @@ var _ = Describe("#machine_safety", func() {
 			setup: setup{
 				machineReplicas: 1,
 				machineDeploymentConditions: []v1alpha1.MachineDeploymentCondition{
-					v1alpha1.MachineDeploymentCondition{
+					{
 						Type:    v1alpha1.MachineDeploymentFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -601,14 +596,14 @@ var _ = Describe("#machine_safety", func() {
 					"freeze": "True",
 				},
 				machineSetConditions: []v1alpha1.MachineSetCondition{
-					v1alpha1.MachineSetCondition{
+					{
 						Type:    v1alpha1.MachineSetFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
 					},
 				},
 				machineDeploymentConditions: []v1alpha1.MachineDeploymentCondition{
-					v1alpha1.MachineDeploymentCondition{
+					{
 						Type:    v1alpha1.MachineDeploymentFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -621,7 +616,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze":  "True",
 				},
 				machineSetConditions: []v1alpha1.MachineSetCondition{
-					v1alpha1.MachineSetCondition{
+					{
 						Type:    v1alpha1.MachineSetFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -631,7 +626,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze": "True",
 				},
 				machineDeploymentConditions: []v1alpha1.MachineDeploymentCondition{
-					v1alpha1.MachineDeploymentCondition{
+					{
 						Type:    v1alpha1.MachineDeploymentFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -646,7 +641,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze": "True",
 				},
 				machineSetConditions: []v1alpha1.MachineSetCondition{
-					v1alpha1.MachineSetCondition{
+					{
 						Type:    v1alpha1.MachineSetFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -659,7 +654,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze":  "True",
 				},
 				machineSetConditions: []v1alpha1.MachineSetCondition{
-					v1alpha1.MachineSetCondition{
+					{
 						Type:    v1alpha1.MachineSetFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -669,7 +664,7 @@ var _ = Describe("#machine_safety", func() {
 					"freeze": "True",
 				},
 				machineDeploymentConditions: []v1alpha1.MachineDeploymentCondition{
-					v1alpha1.MachineDeploymentCondition{
+					{
 						Type:    v1alpha1.MachineDeploymentFrozen,
 						Status:  v1alpha1.ConditionTrue,
 						Message: "The number of machines backing MachineSet: machineset-0 is 4 >= 4 which is the Max-ScaleUp-Limit",
@@ -679,14 +674,20 @@ var _ = Describe("#machine_safety", func() {
 		}),
 	)
 
+	const (
+		zeroDuration        = time.Duration(0)
+		fiveSecondsDuration = 5 * time.Second
+		fiveMinutesDuration = 5 * time.Minute
+	)
 	DescribeTable("##reconcileClusterMachineSafetyAPIServer",
 		func(
 			controlAPIServerIsUp bool,
 			targetAPIServerIsUp bool,
-			apiServerInactiveStartTime time.Time,
+			apiServerInactiveDuration time.Duration,
 			preMachineControllerIsFrozen bool,
 			postMachineControllerFrozen bool,
 		) {
+			apiServerInactiveStartTime := time.Now().Add(-apiServerInactiveDuration)
 			stop := make(chan struct{})
 			defer close(stop)
 
@@ -725,58 +726,58 @@ var _ = Describe("#machine_safety", func() {
 
 		// Both APIServers are reachable
 		Entry("Control APIServer: Reachable, Target APIServer: Reachable, Inactive Timer: Inactive, Pre-Frozen: false = Post-Frozen: false",
-			true, true, time.Time{}, false, false),
+			true, true, zeroDuration, false, false),
 		Entry("Control APIServer: Reachable, Target APIServer: Reachable, Inactive Timer: Inactive, Pre-Frozen: true = Post-Frozen: false",
-			true, true, time.Time{}, true, false),
+			true, true, zeroDuration, true, false),
 		Entry("Control APIServer: Reachable, Target APIServer: Reachable, Inactive Timer: Started, Pre-Frozen: false = Post-Frozen: false",
-			true, true, fiveSecondsBeforeNow, false, false),
+			true, true, fiveSecondsDuration, false, false),
 		Entry("Control APIServer: Reachable, Target APIServer: Reachable, Inactive Timer: Started, Pre-Frozen: true = Post-Frozen: false",
-			true, true, fiveSecondsBeforeNow, true, false),
+			true, true, fiveSecondsDuration, true, false),
 		Entry("Control APIServer: Reachable, Target APIServer: Reachable, Inactive Timer: Elapsed, Pre-Frozen: false = Post-Frozen: false",
-			true, true, fiveMinutesBeforeNow, false, false),
+			true, true, fiveMinutesDuration, false, false),
 		Entry("Control APIServer: Reachable, Target APIServer: Reachable, Inactive Timer: Elapsed, Pre-Frozen: true = Post-Frozen: false",
-			true, true, fiveMinutesBeforeNow, true, false),
+			true, true, fiveMinutesDuration, true, false),
 
 		// Target APIServer is not reachable
 		Entry("Control APIServer: Reachable, Target APIServer: UnReachable, Inactive Timer: Inactive, Pre-Frozen: false = Post-Frozen: false",
-			true, false, time.Time{}, false, false),
+			true, false, zeroDuration, false, false),
 		Entry("Control APIServer: Reachable, Target APIServer: UnReachable, Inactive Timer: Inactive, Pre-Frozen: true = Post-Frozen: true",
-			true, false, time.Time{}, true, true),
+			true, false, zeroDuration, true, true),
 		Entry("Control APIServer: Reachable, Target APIServer: UnReachable, Inactive Timer: Started, Pre-Frozen: false = Post-Frozen: false",
-			true, false, fiveSecondsBeforeNow, false, false),
+			true, false, fiveSecondsDuration, false, false),
 		Entry("Control APIServer: Reachable, Target APIServer: UnReachable, Inactive Timer: Started, Pre-Frozen: true = Post-Frozen: true",
-			true, false, fiveSecondsBeforeNow, true, true),
+			true, false, fiveSecondsDuration, true, true),
 		Entry("Control APIServer: Reachable, Target APIServer: UnReachable, Inactive Timer: Elapsed, Pre-Frozen: false = Post-Frozen: true",
-			true, false, fiveMinutesBeforeNow, false, true),
+			true, false, fiveMinutesDuration, false, true),
 		Entry("Control APIServer: Reachable, Target APIServer: UnReachable, Inactive Timer: Elapsed, Pre-Frozen: true = Post-Frozen: true",
-			true, false, fiveMinutesBeforeNow, true, true),
+			true, false, fiveMinutesDuration, true, true),
 
 		// Control APIServer is not reachable
 		Entry("Control APIServer: UnReachable, Target APIServer: Reachable, Inactive Timer: Inactive, Pre-Frozen: false = Post-Frozen: false",
-			false, true, time.Time{}, false, false),
+			false, true, zeroDuration, false, false),
 		Entry("Control APIServer: UnReachable, Target APIServer: Reachable, Inactive Timer: Inactive, Pre-Frozen: true = Post-Frozen: true",
-			false, true, time.Time{}, true, true),
+			false, true, zeroDuration, true, true),
 		Entry("Control APIServer: UnReachable, Target APIServer: Reachable, Inactive Timer: Started, Pre-Frozen: false = Post-Frozen: false",
-			false, true, fiveSecondsBeforeNow, false, false),
+			false, true, fiveSecondsDuration, false, false),
 		Entry("Control APIServer: UnReachable, Target APIServer: Reachable, Inactive Timer: Started, Pre-Frozen: true = Post-Frozen: true",
-			false, true, fiveSecondsBeforeNow, true, true),
+			false, true, fiveSecondsDuration, true, true),
 		Entry("Control APIServer: UnReachable, Target APIServer: Reachable, Inactive Timer: Elapsed, Pre-Frozen: false = Post-Frozen: true",
-			false, true, fiveMinutesBeforeNow, false, true),
+			false, true, fiveMinutesDuration, false, true),
 		Entry("Control APIServer: UnReachable, Target APIServer: Reachable, Inactive Timer: Elapsed, Pre-Frozen: true = Post-Frozen: true",
-			false, true, fiveMinutesBeforeNow, true, true),
+			false, true, fiveMinutesDuration, true, true),
 
 		// Both APIServers are not reachable
 		Entry("Control APIServer: UnReachable, Target APIServer: UnReachable, Inactive Timer: Inactive, Pre-Frozen: false = Post-Frozen: false",
-			false, false, time.Time{}, false, false),
+			false, false, zeroDuration, false, false),
 		Entry("Control APIServer: UnReachable, Target APIServer: UnReachable, Inactive Timer: Inactive, Pre-Frozen: true = Post-Frozen: true",
-			false, false, time.Time{}, true, true),
+			false, false, zeroDuration, true, true),
 		Entry("Control APIServer: UnReachable, Target APIServer: UnReachable, Inactive Timer: Started, Pre-Frozen: false = Post-Frozen: false",
-			false, false, fiveSecondsBeforeNow, false, false),
+			false, false, fiveSecondsDuration, false, false),
 		Entry("Control APIServer: UnReachable, Target APIServer: UnReachable, Inactive Timer: Started, Pre-Frozen: true = Post-Frozen: true",
-			false, false, fiveSecondsBeforeNow, true, true),
+			false, false, fiveSecondsDuration, true, true),
 		Entry("Control APIServer: UnReachable, Target APIServer: UnReachable, Inactive Timer: Elapsed, Pre-Frozen: false = Post-Frozen: true",
-			false, false, fiveMinutesBeforeNow, false, true),
+			false, false, fiveMinutesDuration, false, true),
 		Entry("Control APIServer: UnReachable, Target APIServer: UnReachable, Inactive Timer: Elapsed, Pre-Frozen: true = Post-Frozen: true",
-			false, false, fiveMinutesBeforeNow, true, true),
+			false, false, fiveMinutesDuration, true, true),
 	)
 })
