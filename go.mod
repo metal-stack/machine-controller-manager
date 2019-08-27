@@ -27,7 +27,7 @@ require (
 	github.com/hashicorp/golang-lru v0.0.0-20180201235237-0fb14efe8c47 // indirect
 	github.com/imdario/mergo v0.3.4 // indirect
 	github.com/jmespath/go-jmespath v0.0.0-20160202185014-0b12d6b521d8 // indirect
-	github.com/metal-pod/metal-go v0.0.0-20190816063655-41f27ea93449 // indirect
+	github.com/metal-pod/metal-go v0.0.0-20190827140547-62d2d0f26ed1
 	github.com/onsi/ginkgo v1.8.0
 	github.com/onsi/gomega v1.5.0
 	github.com/packethost/packngo v0.0.0-20181217122008-b3b45f1b4979

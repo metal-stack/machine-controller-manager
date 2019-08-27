@@ -1328,8 +1328,8 @@ type MetalMachineClassSpec struct {
 	Partition string   `json:"partition"`
 	Size      string   `json:"size"`
 	Image     string   `json:"image"`
-	Tenant    string   `json:"tenant"`
 	Project   string   `json:"project"`
+	Network   string   `json:"network"`
 	Tags      []string `json:"tags,omitempty"`
 	SSHKeys   []string `json:"sshKeys,omitempty"`
 	UserData  string   `json:"userdata,omitempty"`

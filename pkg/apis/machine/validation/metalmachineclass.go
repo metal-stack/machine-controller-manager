@@ -74,8 +74,8 @@ func validateMetalMachineClassSpec(spec *machine.MetalMachineClassSpec, fldPath 
 	if "" == spec.Project {
 		allErrs = append(allErrs, field.Required(fldPath.Child("project"), "Project is required"))
 	}
-	if "" == spec.Tenant {
-		allErrs = append(allErrs, field.Required(fldPath.Child("tenant"), "Tenant is required"))
+	if "" == spec.Network {
+		allErrs = append(allErrs, field.Required(fldPath.Child("network"), "Network is required"))
 	}
 	if len(spec.Partition) == 0 {
 		allErrs = append(allErrs, field.Required(fldPath.Child("partition"), "Partition is required"))

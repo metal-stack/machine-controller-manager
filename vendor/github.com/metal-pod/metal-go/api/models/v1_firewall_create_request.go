@@ -6,6 +6,8 @@ package models
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"strconv"
+
 	strfmt "github.com/go-openapi/strfmt"
 
 	"github.com/go-openapi/errors"
@@ -30,12 +32,14 @@ type V1FirewallCreateRequest struct {
 	// Required: true
 	Imageid *string `json:"imageid"`
 
+	// the ips to attach to this machine additionally
+	Ips []string `json:"ips"`
+
 	// a readable name for this entity
 	Name string `json:"name,omitempty"`
 
-	// the networks of this firewall
-	// Required: true
-	Networks []string `json:"networks"`
+	// the networks that this machine will be placed in.
+	Networks []*V1MachineAllocationNetwork `json:"networks"`
 
 	// the partition id to assign this machine to
 	// Required: true
@@ -55,10 +59,6 @@ type V1FirewallCreateRequest struct {
 
 	// tags for this machine
 	Tags []string `json:"tags"`
-
-	// the name of the owning tenant
-	// Required: true
-	Tenant *string `json:"tenant"`
 
 	// cloud-init.io compatible userdata must be base64 encoded
 	UserData string `json:"user_data,omitempty"`
@@ -95,10 +95,6 @@ func (m *V1FirewallCreateRequest) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateTenant(formats); err != nil {
-		res = append(res, err)
-	}
-
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
@@ -116,8 +112,24 @@ func (m *V1FirewallCreateRequest) validateImageid(formats strfmt.Registry) error
 
 func (m *V1FirewallCreateRequest) validateNetworks(formats strfmt.Registry) error {
 
-	if err := validate.Required("networks", "body", m.Networks); err != nil {
-		return err
+	if swag.IsZero(m.Networks) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.Networks); i++ {
+		if swag.IsZero(m.Networks[i]) { // not required
+			continue
+		}
+
+		if m.Networks[i] != nil {
+			if err := m.Networks[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("networks" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
 	}
 
 	return nil
@@ -153,15 +165,6 @@ func (m *V1FirewallCreateRequest) validateSizeid(formats strfmt.Registry) error 
 func (m *V1FirewallCreateRequest) validateSSHPubKeys(formats strfmt.Registry) error {
 
 	if err := validate.Required("ssh_pub_keys", "body", m.SSHPubKeys); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *V1FirewallCreateRequest) validateTenant(formats strfmt.Registry) error {
-
-	if err := validate.Required("tenant", "body", m.Tenant); err != nil {
 		return err
 	}
 

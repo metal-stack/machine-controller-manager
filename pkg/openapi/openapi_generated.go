@@ -2501,13 +2501,13 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 								Format: "",
 							},
 						},
-						"tenant": {
+						"project": {
 							SchemaProps: spec.SchemaProps{
 								Type:   []string{"string"},
 								Format: "",
 							},
 						},
-						"project": {
+						"network": {
 							SchemaProps: spec.SchemaProps{
 								Type:   []string{"string"},
 								Format: "",
@@ -2551,7 +2551,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 							},
 						},
 					},
-					Required: []string{"partition", "size", "image", "tenant", "project"},
+					Required: []string{"partition", "size", "image", "project", "network"},
 				},
 			},
 			Dependencies: []string{

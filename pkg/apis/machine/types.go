@@ -1172,8 +1172,8 @@ type MetalMachineClassSpec struct {
 	Partition string // required
 	Size      string // required
 	Image     string // required
-	Tenant    string // required
 	Project   string // required
+	Network   string // required
 	Tags      []string
 	SSHKeys   []string
 	UserData  string

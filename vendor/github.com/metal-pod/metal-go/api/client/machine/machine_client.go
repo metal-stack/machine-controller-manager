@@ -83,6 +83,64 @@ func (a *Client) AllocateMachine(params *AllocateMachineParams, authInfo runtime
 }
 
 /*
+ChassisIdentifyLEDOff sends a power off to the chassis identify l e d
+*/
+func (a *Client) ChassisIdentifyLEDOff(params *ChassisIdentifyLEDOffParams, authInfo runtime.ClientAuthInfoWriter) (*ChassisIdentifyLEDOffOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewChassisIdentifyLEDOffParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "chassisIdentifyLEDOff",
+		Method:             "POST",
+		PathPattern:        "/v1/machine/{id}/power/chassis-identify-led-off/{description}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &ChassisIdentifyLEDOffReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*ChassisIdentifyLEDOffOK), nil
+
+}
+
+/*
+ChassisIdentifyLEDOn sends a power on to the chassis identify l e d
+*/
+func (a *Client) ChassisIdentifyLEDOn(params *ChassisIdentifyLEDOnParams, authInfo runtime.ClientAuthInfoWriter) (*ChassisIdentifyLEDOnOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewChassisIdentifyLEDOnParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "chassisIdentifyLEDOn",
+		Method:             "POST",
+		PathPattern:        "/v1/machine/{id}/power/chassis-identify-led-on/{description}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &ChassisIdentifyLEDOnReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*ChassisIdentifyLEDOnOK), nil
+
+}
+
+/*
 CheckMachineLiveliness externals trigger for evaluating machine liveliness
 */
 func (a *Client) CheckMachineLiveliness(params *CheckMachineLivelinessParams, authInfo runtime.ClientAuthInfoWriter) (*CheckMachineLivelinessOK, error) {
@@ -170,7 +228,7 @@ func (a *Client) FindMachine(params *FindMachineParams, authInfo runtime.ClientA
 }
 
 /*
-FindMachines searches machines
+FindMachines finds machines by multiple criteria
 */
 func (a *Client) FindMachines(params *FindMachinesParams, authInfo runtime.ClientAuthInfoWriter) (*FindMachinesOK, error) {
 	// TODO: Validate the params before sending
@@ -462,6 +520,35 @@ func (a *Client) RegisterMachine(params *RegisterMachineParams, authInfo runtime
 		return nil, value, nil
 	}
 	return nil, nil, nil
+
+}
+
+/*
+SetChassisIdentifyLEDState sets the state of a chassis identify l e d
+*/
+func (a *Client) SetChassisIdentifyLEDState(params *SetChassisIdentifyLEDStateParams, authInfo runtime.ClientAuthInfoWriter) (*SetChassisIdentifyLEDStateOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewSetChassisIdentifyLEDStateParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "setChassisIdentifyLEDState",
+		Method:             "POST",
+		PathPattern:        "/v1/machine/{id}/chassis-identify-led-state",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &SetChassisIdentifyLEDStateReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*SetChassisIdentifyLEDStateOK), nil
 
 }
 

@@ -16,12 +16,13 @@ type MachineCreateRequest struct {
 	UserData      string
 	Size          string
 	Project       string
-	Tenant        string
 	Partition     string
 	Image         string
 	Tags          []string
 	SSHPublicKeys []string
 	UUID          string
+	Networks      []MachineAllocationNetwork
+	IPs           []string
 }
 
 // MachineFindRequest contains criteria for a machine listing
@@ -36,7 +37,6 @@ type MachineFindRequest struct {
 
 	// allocation
 	AllocationName      *string
-	AllocationTenant    *string
 	AllocationProject   *string
 	AllocationImageID   *string
 	AllocationHostname  *string
@@ -89,6 +89,23 @@ type MachineFindRequest struct {
 	FruProductSerial       *string
 }
 
+type MachineAllocationNetwork struct {
+	Autoacquire bool
+	NetworkID   string
+}
+
+func (n *MachineCreateRequest) translateNetworks() []*models.V1MachineAllocationNetwork {
+	var nets []*models.V1MachineAllocationNetwork
+	for i := range n.Networks {
+		net := models.V1MachineAllocationNetwork{
+			Networkid:   &n.Networks[i].NetworkID,
+			Autoacquire: &n.Networks[i].Autoacquire,
+		}
+		nets = append(nets, &net)
+	}
+	return nets
+}
+
 // MachineCreateResponse is returned when a machine was created
 type MachineCreateResponse struct {
 	Machine *models.V1MachineResponse
@@ -116,12 +133,17 @@ type MachineDeleteResponse struct {
 
 // MachinePowerResponse contains the machine power result
 type MachinePowerResponse struct {
-	MachineAllocation *models.V1MachineResponse
+	Machine *models.V1MachineResponse
+}
+
+// ChassisIdentifyLEDPowerResponse contains the machine LED power result
+type ChassisIdentifyLEDPowerResponse struct {
+	Machine *models.V1MachineResponse
 }
 
 // MachineBiosResponse contains the machine bios result
 type MachineBiosResponse struct {
-	MachineAllocation *models.V1MachineResponse
+	Machine *models.V1MachineResponse
 }
 
 // MachineStateResponse contains the machine bios result
@@ -141,11 +163,12 @@ func (d *Driver) MachineCreate(mcr *MachineCreateRequest) (*MachineCreateRespons
 		Name:        mcr.Name,
 		UUID:        mcr.UUID,
 		Projectid:   &mcr.Project,
-		Tenant:      &mcr.Tenant,
 		Sizeid:      &mcr.Size,
 		SSHPubKeys:  mcr.SSHPublicKeys,
 		UserData:    mcr.UserData,
 		Tags:        mcr.Tags,
+		Networks:    mcr.translateNetworks(),
+		Ips:         mcr.IPs,
 	}
 	allocMachine := machine.NewAllocateMachineParams()
 	allocMachine.SetBody(allocateRequest)
@@ -218,7 +241,7 @@ func (d *Driver) MachineFind(mfr *MachineFindRequest) (*MachineListResponse, err
 	var resp *machine.FindMachinesOK
 
 	findMachines := machine.NewFindMachinesParams()
-	req := &models.V1FindMachinesRequest{
+	req := &models.V1MachineFindRequest{
 		ID:                         mfr.ID,
 		Name:                       mfr.Name,
 		PartitionID:                mfr.PartitionID,
@@ -227,7 +250,6 @@ func (d *Driver) MachineFind(mfr *MachineFindRequest) (*MachineListResponse, err
 		Liveliness:                 mfr.Liveliness,
 		Tags:                       mfr.Tags,
 		AllocationName:             mfr.AllocationName,
-		AllocationTenant:           mfr.AllocationTenant,
 		AllocationProject:          mfr.AllocationProject,
 		AllocationImageID:          mfr.AllocationImageID,
 		AllocationHostname:         mfr.AllocationHostname,
@@ -237,33 +259,34 @@ func (d *Driver) MachineFind(mfr *MachineFindRequest) (*MachineListResponse, err
 		NetworkIps:                 mfr.NetworkIPs,
 		NetworkDestinationPrefixes: mfr.NetworkDestinationPrefixes,
 		NetworkVrfs:                mfr.NetworkVrfs,
-		NetworkPrimary:             mfr.NetworkPrimary,
-		NetworkAsns:                mfr.NetworkASNs,
-		NetworkNat:                 mfr.NetworkNat,
-		NetworkUnderlay:            mfr.NetworkUnderlay,
-		HardwareMemory:             mfr.HardwareMemory,
-		HardwareCPUCores:           mfr.HardwareCPUCores,
-		NicsMacAddresses:           mfr.NicsMacAddresses,
-		NicsNames:                  mfr.NicsNames,
-		NicsVrfs:                   mfr.NicsVrfs,
-		NicsNeighborMacAddresses:   mfr.NicsNeighborMacAddresses,
-		NicsNeighborNames:          mfr.NicsNeighborNames,
-		NicsNeighborVrfs:           mfr.NicsNeighborVrfs,
-		DiskNames:                  mfr.DiskNames,
-		DiskSizes:                  mfr.DiskSizes,
-		StateValue:                 mfr.StateValue,
-		IPMIAddress:                mfr.IpmiAddress,
-		IPMIMacAddress:             mfr.IpmiMacAddress,
-		IPMIUser:                   mfr.IpmiUser,
-		IPMIInterface:              mfr.IpmiInterface,
-		FruChassisPartNumber:       mfr.FruChassisPartNumber,
-		FruChassisPartSerial:       mfr.FruChassisPartSerial,
-		FruBoardMfg:                mfr.FruBoardMfg,
-		FruBoardMfgSerial:          mfr.FruBoardMfgSerial,
-		FruBoardPartNumber:         mfr.FruChassisPartNumber,
-		FruProductManufacturer:     mfr.FruProductManufacturer,
-		FruProductPartNumber:       mfr.FruProductPartNumber,
-		FruProductSerial:           mfr.FruProductSerial,
+		// FIXME
+		//NetworkPrimary:             mfr.NetworkPrimary,
+		NetworkAsns:              mfr.NetworkASNs,
+		NetworkNat:               mfr.NetworkNat,
+		NetworkUnderlay:          mfr.NetworkUnderlay,
+		HardwareMemory:           mfr.HardwareMemory,
+		HardwareCPUCores:         mfr.HardwareCPUCores,
+		NicsMacAddresses:         mfr.NicsMacAddresses,
+		NicsNames:                mfr.NicsNames,
+		NicsVrfs:                 mfr.NicsVrfs,
+		NicsNeighborMacAddresses: mfr.NicsNeighborMacAddresses,
+		NicsNeighborNames:        mfr.NicsNeighborNames,
+		NicsNeighborVrfs:         mfr.NicsNeighborVrfs,
+		DiskNames:                mfr.DiskNames,
+		DiskSizes:                mfr.DiskSizes,
+		StateValue:               mfr.StateValue,
+		IPMIAddress:              mfr.IpmiAddress,
+		IPMIMacAddress:           mfr.IpmiMacAddress,
+		IPMIUser:                 mfr.IpmiUser,
+		IPMIInterface:            mfr.IpmiInterface,
+		FruChassisPartNumber:     mfr.FruChassisPartNumber,
+		FruChassisPartSerial:     mfr.FruChassisPartSerial,
+		FruBoardMfg:              mfr.FruBoardMfg,
+		FruBoardMfgSerial:        mfr.FruBoardMfgSerial,
+		FruBoardPartNumber:       mfr.FruChassisPartNumber,
+		FruProductManufacturer:   mfr.FruProductManufacturer,
+		FruProductPartNumber:     mfr.FruProductPartNumber,
+		FruProductSerial:         mfr.FruProductSerial,
 	}
 	findMachines.SetBody(req)
 
@@ -302,7 +325,7 @@ func (d *Driver) MachinePowerOn(machineID string) (*MachinePowerResponse, error)
 	if err != nil {
 		return response, err
 	}
-	response.MachineAllocation = resp.Payload
+	response.Machine = resp.Payload
 	return response, nil
 }
 
@@ -317,7 +340,7 @@ func (d *Driver) MachinePowerOff(machineID string) (*MachinePowerResponse, error
 	if err != nil {
 		return response, err
 	}
-	response.MachineAllocation = resp.Payload
+	response.Machine = resp.Payload
 	return response, nil
 }
 
@@ -332,7 +355,7 @@ func (d *Driver) MachinePowerReset(machineID string) (*MachinePowerResponse, err
 	if err != nil {
 		return response, err
 	}
-	response.MachineAllocation = resp.Payload
+	response.Machine = resp.Payload
 	return response, nil
 }
 
@@ -347,7 +370,7 @@ func (d *Driver) MachineBootBios(machineID string) (*MachineBiosResponse, error)
 	if err != nil {
 		return response, err
 	}
-	response.MachineAllocation = resp.Payload
+	response.Machine = resp.Payload
 	return response, nil
 }
 
@@ -381,6 +404,38 @@ func (d *Driver) machineState(machineID, state, description string) (*MachineSta
 
 	response := &MachineStateResponse{}
 	resp, err := d.machine.SetMachineState(machineState, d.auth)
+	if err != nil {
+		return response, err
+	}
+	response.Machine = resp.Payload
+	return response, nil
+}
+
+// ChassisIdentifyLEDPowerOn powers on the given machine
+func (d *Driver) ChassisIdentifyLEDPowerOn(machineID, description string) (*ChassisIdentifyLEDPowerResponse, error) {
+	machineLedOn := machine.NewChassisIdentifyLEDOnParams()
+	machineLedOn.ID = machineID
+	machineLedOn.Description = description
+	machineLedOn.Body = []string{}
+
+	response := &ChassisIdentifyLEDPowerResponse{}
+	resp, err := d.machine.ChassisIdentifyLEDOn(machineLedOn, d.auth)
+	if err != nil {
+		return response, err
+	}
+	response.Machine = resp.Payload
+	return response, nil
+}
+
+// ChassisIdentifyLEDPowerOff powers off the given machine
+func (d *Driver) ChassisIdentifyLEDPowerOff(machineID, description string) (*ChassisIdentifyLEDPowerResponse, error) {
+	machineLedOff := machine.NewChassisIdentifyLEDOffParams()
+	machineLedOff.ID = machineID
+	machineLedOff.Description = description
+	machineLedOff.Body = []string{}
+
+	response := &ChassisIdentifyLEDPowerResponse{}
+	resp, err := d.machine.ChassisIdentifyLEDOff(machineLedOff, d.auth)
 	if err != nil {
 		return response, err
 	}

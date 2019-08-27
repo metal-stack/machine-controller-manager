@@ -2513,8 +2513,8 @@ func autoConvert_v1alpha1_MetalMachineClassSpec_To_machine_MetalMachineClassSpec
 	out.Partition = in.Partition
 	out.Size = in.Size
 	out.Image = in.Image
-	out.Tenant = in.Tenant
 	out.Project = in.Project
+	out.Network = in.Network
 	out.Tags = *(*[]string)(unsafe.Pointer(&in.Tags))
 	out.SSHKeys = *(*[]string)(unsafe.Pointer(&in.SSHKeys))
 	out.UserData = in.UserData
@@ -2531,8 +2531,8 @@ func autoConvert_machine_MetalMachineClassSpec_To_v1alpha1_MetalMachineClassSpec
 	out.Partition = in.Partition
 	out.Size = in.Size
 	out.Image = in.Image
-	out.Tenant = in.Tenant
 	out.Project = in.Project
+	out.Network = in.Network
 	out.Tags = *(*[]string)(unsafe.Pointer(&in.Tags))
 	out.SSHKeys = *(*[]string)(unsafe.Pointer(&in.SSHKeys))
 	out.UserData = in.UserData

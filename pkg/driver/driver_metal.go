@@ -49,6 +49,12 @@ func (d *MetalDriver) Create() (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
+	networks := []metalgo.MachineAllocationNetwork{
+		{
+			Autoacquire: true,
+			NetworkID:   d.MetalMachineClass.Spec.Network,
+		},
+	}
 	createRequest := &metalgo.MachineCreateRequest{
 		Description:   d.MachineName + " created by Gardener.",
 		Name:          d.MachineName,
@@ -56,7 +62,7 @@ func (d *MetalDriver) Create() (string, string, error) {
 		UserData:      d.UserData,
 		Size:          d.MetalMachineClass.Spec.Size,
 		Project:       d.MetalMachineClass.Spec.Project,
-		Tenant:        d.MetalMachineClass.Spec.Tenant,
+		Networks:      networks,
 		Partition:     d.MetalMachineClass.Spec.Partition,
 		Image:         d.MetalMachineClass.Spec.Image,
 		Tags:          d.MetalMachineClass.Spec.Tags,
@@ -83,11 +89,13 @@ func (d *MetalDriver) Delete() error {
 	project := d.MetalMachineClass.Spec.Project
 	partition := d.MetalMachineClass.Spec.Partition
 	machineID := d.decodeMachineID(d.MachineID)
+	networkID := d.MetalMachineClass.Spec.Network
 
 	mfr := &metalgo.MachineFindRequest{
 		ID:                 &machineID,
 		AllocationHostname: &hostname,
 		AllocationProject:  &project,
+		NetworkIDs:         []string{networkID},
 		PartitionID:        &partition,
 	}
 	m, err := svc.MachineFind(mfr)
@@ -146,10 +154,12 @@ func (d *MetalDriver) GetVMs(machineID string) (VMs, error) {
 		findRequest := &metalgo.MachineFindRequest{
 			AllocationProject: &d.MetalMachineClass.Spec.Project,
 			PartitionID:       &d.MetalMachineClass.Spec.Partition,
+			NetworkIDs:        []string{d.MetalMachineClass.Spec.Network},
 		}
 		mlr, err := svc.MachineFind(findRequest)
 		if err != nil {
-			glog.Errorf("Could not list machines for project %s in partition:%s: %v", d.MetalMachineClass.Spec.Project, d.MetalMachineClass.Spec.Partition, err)
+			glog.Errorf("Could not list machines for project %s in partition:%s networkID:%s : %v",
+				d.MetalMachineClass.Spec.Project, d.MetalMachineClass.Spec.Partition, d.MetalMachineClass.Spec.Network, err)
 			return nil, err
 		}
 		for _, m := range mlr.Machines {

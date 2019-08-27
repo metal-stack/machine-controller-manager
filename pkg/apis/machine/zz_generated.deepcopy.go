@@ -1570,12 +1570,8 @@ func (in *MetalMachineClassSpec) DeepCopyInto(out *MetalMachineClassSpec) {
 	}
 	if in.SecretRef != nil {
 		in, out := &in.SecretRef, &out.SecretRef
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(v1.SecretReference)
-			**out = **in
-		}
+		*out = new(v1.SecretReference)
+		**out = **in
 	}
 	return
 }
