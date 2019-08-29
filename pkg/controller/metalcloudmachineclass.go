@@ -16,6 +16,8 @@ limitations under the License.
 package controller
 
 import (
+	"time"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -105,6 +107,12 @@ func (c *controller) reconcileClusterMetalMachineClassKey(key string) error {
 }
 
 func (c *controller) reconcileClusterMetalMachineClass(class *v1alpha1.MetalMachineClass) error {
+	glog.V(4).Info("Start Reconciling metalmachineclass: ", class.Name)
+	defer func() {
+		c.enqueueMetalMachineClassAfter(class, 10*time.Minute)
+		glog.V(4).Info("Stop Reconciling metalmachineclass: ", class.Name)
+	}()
+
 	internalClass := &machine.MetalMachineClass{}
 	err := c.internalExternalScheme.Convert(class, internalClass, nil)
 	if err != nil {
@@ -119,7 +127,10 @@ func (c *controller) reconcileClusterMetalMachineClass(class *v1alpha1.MetalMach
 
 	// Manipulate finalizers
 	if class.DeletionTimestamp == nil {
-		c.addMetalMachineClassFinalizers(class)
+		err = c.addMetalMachineClassFinalizers(class)
+		if err != nil {
+			return err
+		}
 	}
 
 	machines, err := c.findMachinesForClass(MetalMachineClassKind, class.Name)
@@ -141,8 +152,7 @@ func (c *controller) reconcileClusterMetalMachineClass(class *v1alpha1.MetalMach
 			return err
 		}
 		if len(machineDeployments) == 0 && len(machineSets) == 0 && len(machines) == 0 {
-			c.deleteMetalMachineClassFinalizers(class)
-			return nil
+			return c.deleteMetalMachineClassFinalizers(class)
 		}
 
 		glog.V(4).Infof("Cannot remove finalizer of %s because still Machine[s|Sets|Deployments] are referencing it", class.Name)
@@ -160,37 +170,48 @@ func (c *controller) reconcileClusterMetalMachineClass(class *v1alpha1.MetalMach
 	Manipulate Finalizers
 */
 
-func (c *controller) addMetalMachineClassFinalizers(class *v1alpha1.MetalMachineClass) {
+func (c *controller) addMetalMachineClassFinalizers(class *v1alpha1.MetalMachineClass) error {
 	clone := class.DeepCopy()
 
 	if finalizers := sets.NewString(clone.Finalizers...); !finalizers.Has(DeleteFinalizerName) {
 		finalizers.Insert(DeleteFinalizerName)
-		c.updateMetalMachineClassFinalizers(clone, finalizers.List())
+		return c.updateMetalMachineClassFinalizers(clone, finalizers.List())
 	}
+	return nil
 }
 
-func (c *controller) deleteMetalMachineClassFinalizers(class *v1alpha1.MetalMachineClass) {
+func (c *controller) deleteMetalMachineClassFinalizers(class *v1alpha1.MetalMachineClass) error {
 	clone := class.DeepCopy()
 
 	if finalizers := sets.NewString(clone.Finalizers...); finalizers.Has(DeleteFinalizerName) {
 		finalizers.Delete(DeleteFinalizerName)
-		c.updateMetalMachineClassFinalizers(clone, finalizers.List())
+		return c.updateMetalMachineClassFinalizers(clone, finalizers.List())
 	}
+	return nil
 }
 
-func (c *controller) updateMetalMachineClassFinalizers(class *v1alpha1.MetalMachineClass, finalizers []string) {
+func (c *controller) updateMetalMachineClassFinalizers(class *v1alpha1.MetalMachineClass, finalizers []string) error {
 	// Get the latest version of the class so that we can avoid conflicts
 	class, err := c.controlMachineClient.MetalMachineClasses(class.Namespace).Get(class.Name, metav1.GetOptions{})
 	if err != nil {
-		return
+		return err
 	}
 
 	clone := class.DeepCopy()
 	clone.Finalizers = finalizers
 	_, err = c.controlMachineClient.MetalMachineClasses(class.Namespace).Update(clone)
 	if err != nil {
-		// Keep retrying until update goes through
-		glog.Warningf("Updated failed, retrying: %v", err)
-		c.updateMetalMachineClassFinalizers(class, finalizers)
+		glog.Warning("Updating MetalMachineClass failed, retrying. ", class.Name, err)
+		return err
 	}
+	glog.V(3).Infof("Successfully added/removed finalizer on the Metalmachineclass %q", class.Name)
+	return err
+}
+
+func (c *controller) enqueueMetalMachineClassAfter(obj interface{}, after time.Duration) {
+	key, err := cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		return
+	}
+	c.openStackMachineClassQueue.AddAfter(key, after)
 }
