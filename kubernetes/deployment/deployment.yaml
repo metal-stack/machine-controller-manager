@@ -32,7 +32,7 @@ spec:
           - --safety-down=1
           - --machine-creation-timeout=20m
           - --machine-drain-timeout=5m
-          - --machine-health-timeout=10m
+          - --machine-health-timeout=10080m
           - --machine-safety-apiserver-statuscheck-timeout=30s
           - --machine-safety-apiserver-statuscheck-period=1m
           - --machine-safety-orphan-vms-period=30m
