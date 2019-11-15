@@ -13,7 +13,10 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/docker v0.7.3-0.20180612054059-a9fbbdc8dd87 // indirect
 	github.com/go-ini/ini v1.36.0 // indirect
-	github.com/go-openapi/spec v0.19.2
+	github.com/go-openapi/analysis v0.19.6 // indirect
+	github.com/go-openapi/runtime v0.19.8 // indirect
+	github.com/go-openapi/spec v0.19.4
+	github.com/go-openapi/validate v0.19.5 // indirect
 	github.com/gogo/protobuf v1.2.1 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/groupcache v0.0.0-20180513044358-24b0969c4cb7 // indirect
@@ -26,7 +29,8 @@ require (
 	github.com/hashicorp/golang-lru v0.0.0-20180201235237-0fb14efe8c47 // indirect
 	github.com/imdario/mergo v0.3.4 // indirect
 	github.com/jmespath/go-jmespath v0.0.0-20160202185014-0b12d6b521d8 // indirect
-	github.com/metal-pod/metal-go v0.0.0-20190906074518-f002e94f3db0
+	github.com/metal-pod/metal-go v0.2.0
+	github.com/metal-pod/security v0.0.0-20190920091500-ed81ae92725b // indirect
 	github.com/onsi/ginkgo v1.8.0
 	github.com/onsi/gomega v1.5.0
 	github.com/packethost/packngo v0.0.0-20181217122008-b3b45f1b4979
@@ -36,14 +40,17 @@ require (
 	github.com/sirupsen/logrus v1.2.0 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a // indirect
 	github.com/spf13/pflag v1.0.3
+	go.mongodb.org/mongo-driver v1.1.3 // indirect
 	go.opencensus.io v0.18.0 // indirect
 	golang.org/x/lint v0.0.0-20190227174305-5b3e6a55c961
+	golang.org/x/net v0.0.0-20191112182307-2180aed22343 // indirect
 	golang.org/x/oauth2 v0.0.0-20180821212333-d2e6202438be
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
 	google.golang.org/api v0.0.0-20180910000450-7ca32eb868bf
 	google.golang.org/genproto v0.0.0-20190227213309-4f5b463f9597 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.42.0 // indirect
+	gopkg.in/yaml.v2 v2.2.5 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 	k8s.io/api v0.0.0-20181005203742-357ec6384fa7
 	k8s.io/apimachinery v0.0.0-20180913025736-6dd46049f395
