@@ -1119,10 +1119,7 @@ func Convert_machine_AzureHardwareProfile_To_v1alpha1_AzureHardwareProfile(in *m
 
 func autoConvert_v1alpha1_AzureImageReference_To_machine_AzureImageReference(in *AzureImageReference, out *machine.AzureImageReference, s conversion.Scope) error {
 	out.ID = in.ID
-	out.Publisher = in.Publisher
-	out.Offer = in.Offer
-	out.Sku = in.Sku
-	out.Version = in.Version
+	out.URN = (*string)(unsafe.Pointer(in.URN))
 	return nil
 }
 
@@ -1133,10 +1130,7 @@ func Convert_v1alpha1_AzureImageReference_To_machine_AzureImageReference(in *Azu
 
 func autoConvert_machine_AzureImageReference_To_v1alpha1_AzureImageReference(in *machine.AzureImageReference, out *AzureImageReference, s conversion.Scope) error {
 	out.ID = in.ID
-	out.Publisher = in.Publisher
-	out.Offer = in.Offer
-	out.Sku = in.Sku
-	out.Version = in.Version
+	out.URN = (*string)(unsafe.Pointer(in.URN))
 	return nil
 }
 
@@ -1507,6 +1501,7 @@ func Convert_machine_AzureSubResource_To_v1alpha1_AzureSubResource(in *machine.A
 
 func autoConvert_v1alpha1_AzureSubnetInfo_To_machine_AzureSubnetInfo(in *AzureSubnetInfo, out *machine.AzureSubnetInfo, s conversion.Scope) error {
 	out.VnetName = in.VnetName
+	out.VnetResourceGroup = (*string)(unsafe.Pointer(in.VnetResourceGroup))
 	out.SubnetName = in.SubnetName
 	return nil
 }
@@ -1518,6 +1513,7 @@ func Convert_v1alpha1_AzureSubnetInfo_To_machine_AzureSubnetInfo(in *AzureSubnet
 
 func autoConvert_machine_AzureSubnetInfo_To_v1alpha1_AzureSubnetInfo(in *machine.AzureSubnetInfo, out *AzureSubnetInfo, s conversion.Scope) error {
 	out.VnetName = in.VnetName
+	out.VnetResourceGroup = (*string)(unsafe.Pointer(in.VnetResourceGroup))
 	out.SubnetName = in.SubnetName
 	return nil
 }
@@ -1540,9 +1536,8 @@ func autoConvert_v1alpha1_AzureVirtualMachineProperties_To_machine_AzureVirtualM
 	if err := Convert_v1alpha1_AzureNetworkProfile_To_machine_AzureNetworkProfile(&in.NetworkProfile, &out.NetworkProfile, s); err != nil {
 		return err
 	}
-	if err := Convert_v1alpha1_AzureSubResource_To_machine_AzureSubResource(&in.AvailabilitySet, &out.AvailabilitySet, s); err != nil {
-		return err
-	}
+	out.AvailabilitySet = (*machine.AzureSubResource)(unsafe.Pointer(in.AvailabilitySet))
+	out.Zone = (*int)(unsafe.Pointer(in.Zone))
 	return nil
 }
 
@@ -1564,9 +1559,8 @@ func autoConvert_machine_AzureVirtualMachineProperties_To_v1alpha1_AzureVirtualM
 	if err := Convert_machine_AzureNetworkProfile_To_v1alpha1_AzureNetworkProfile(&in.NetworkProfile, &out.NetworkProfile, s); err != nil {
 		return err
 	}
-	if err := Convert_machine_AzureSubResource_To_v1alpha1_AzureSubResource(&in.AvailabilitySet, &out.AvailabilitySet, s); err != nil {
-		return err
-	}
+	out.AvailabilitySet = (*AzureSubResource)(unsafe.Pointer(in.AvailabilitySet))
+	out.Zone = (*int)(unsafe.Pointer(in.Zone))
 	return nil
 }
 
@@ -1774,6 +1768,7 @@ func Convert_machine_GCPMetadata_To_v1alpha1_GCPMetadata(in *machine.GCPMetadata
 }
 
 func autoConvert_v1alpha1_GCPNetworkInterface_To_machine_GCPNetworkInterface(in *GCPNetworkInterface, out *machine.GCPNetworkInterface, s conversion.Scope) error {
+	out.DisableExternalIP = in.DisableExternalIP
 	out.Network = in.Network
 	out.Subnetwork = in.Subnetwork
 	return nil
@@ -1785,6 +1780,7 @@ func Convert_v1alpha1_GCPNetworkInterface_To_machine_GCPNetworkInterface(in *GCP
 }
 
 func autoConvert_machine_GCPNetworkInterface_To_v1alpha1_GCPNetworkInterface(in *machine.GCPNetworkInterface, out *GCPNetworkInterface, s conversion.Scope) error {
+	out.DisableExternalIP = in.DisableExternalIP
 	out.Network = in.Network
 	out.Subnetwork = in.Subnetwork
 	return nil

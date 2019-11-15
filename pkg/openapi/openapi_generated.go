@@ -606,28 +606,11 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 								Format: "",
 							},
 						},
-						"publisher": {
+						"urn": {
 							SchemaProps: spec.SchemaProps{
-								Type:   []string{"string"},
-								Format: "",
-							},
-						},
-						"offer": {
-							SchemaProps: spec.SchemaProps{
-								Type:   []string{"string"},
-								Format: "",
-							},
-						},
-						"sku": {
-							SchemaProps: spec.SchemaProps{
-								Type:   []string{"string"},
-								Format: "",
-							},
-						},
-						"version": {
-							SchemaProps: spec.SchemaProps{
-								Type:   []string{"string"},
-								Format: "",
+								Description: "Uniform Resource Name of the OS image to be used , it has the format 'publisher:offer:sku:version'",
+								Type:        []string{"string"},
+								Format:      "",
 							},
 						},
 					},
@@ -1027,6 +1010,12 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 								Format: "",
 							},
 						},
+						"vnetResourceGroup": {
+							SchemaProps: spec.SchemaProps{
+								Type:   []string{"string"},
+								Format: "",
+							},
+						},
 						"subnetName": {
 							SchemaProps: spec.SchemaProps{
 								Type:   []string{"string"},
@@ -1066,6 +1055,12 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 						"availabilitySet": {
 							SchemaProps: spec.SchemaProps{
 								Ref: ref("github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1.AzureSubResource"),
+							},
+						},
+						"zone": {
+							SchemaProps: spec.SchemaProps{
+								Type:   []string{"integer"},
+								Format: "int32",
 							},
 						},
 					},
@@ -1427,6 +1422,12 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 				SchemaProps: spec.SchemaProps{
 					Description: "GCPNetworkInterface describes network interfaces for GCP",
 					Properties: map[string]spec.Schema{
+						"disableExternalIP": {
+							SchemaProps: spec.SchemaProps{
+								Type:   []string{"boolean"},
+								Format: "",
+							},
+						},
 						"network": {
 							SchemaProps: spec.SchemaProps{
 								Type:   []string{"string"},

@@ -864,7 +864,8 @@ type AzureVirtualMachineProperties struct {
 	StorageProfile  AzureStorageProfile
 	OsProfile       AzureOSProfile
 	NetworkProfile  AzureNetworkProfile
-	AvailabilitySet AzureSubResource
+	AvailabilitySet *AzureSubResource
+	Zone            *int
 }
 
 // AzureHardwareProfile is specifies the hardware settings for the virtual machine.
@@ -883,11 +884,8 @@ type AzureStorageProfile struct {
 // marketplace images, or virtual machine images. This element is required when you want to use a platform image,
 // marketplace image, or virtual machine image, but is not used in other creation operations.
 type AzureImageReference struct {
-	ID        string
-	Publisher string
-	Offer     string
-	Sku       string
-	Version   string
+	ID  string
+	URN *string
 }
 
 // AzureOSDisk is specifies information about the operating system disk used by the virtual machine. <br><br> For more
@@ -961,8 +959,9 @@ type AzureSubResource struct {
 
 // AzureSubnetInfo is the information containing the subnet details
 type AzureSubnetInfo struct {
-	VnetName   string
-	SubnetName string
+	VnetName          string
+	VnetResourceGroup *string
+	SubnetName        string
 }
 
 /********************** GCPMachineClass APIs ***************/
@@ -1026,8 +1025,9 @@ type GCPMetadata struct {
 
 // GCPNetworkInterface describes network interfaces for GCP
 type GCPNetworkInterface struct {
-	Network    string
-	Subnetwork string
+	DisableExternalIP bool
+	Network           string
+	Subnetwork        string
 }
 
 // GCPScheduling describes scheduling configuration for GCP.

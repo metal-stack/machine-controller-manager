@@ -97,12 +97,9 @@ func (d *GCPDriver) Create() (string, string, error) {
 	}
 	instance.Disks = disks
 
-	var metadataItems = []*compute.MetadataItems{
-		{
-			Key:   "user-data",
-			Value: &d.UserData,
-		},
-	}
+	var metadataItems = []*compute.MetadataItems{}
+	metadataItems = append(metadataItems, d.getUserData())
+
 	for _, metadata := range d.GCPMachineClass.Spec.Metadata {
 		metadataItems = append(metadataItems, &compute.MetadataItems{
 			Key:   metadata.Key,
@@ -115,8 +112,11 @@ func (d *GCPDriver) Create() (string, string, error) {
 
 	var networkInterfaces = []*compute.NetworkInterface{}
 	for _, nic := range d.GCPMachineClass.Spec.NetworkInterfaces {
-		computeNIC := &compute.NetworkInterface{
-			AccessConfigs: []*compute.AccessConfig{{}},
+		computeNIC := &compute.NetworkInterface{}
+
+		if nic.DisableExternalIP == false {
+			// When DisableExternalIP is false, implies Attach an external IP to VM
+			computeNIC.AccessConfigs = []*compute.AccessConfig{{}}
 		}
 		if len(nic.Network) != 0 {
 			computeNIC.Network = fmt.Sprintf("projects/%s/global/networks/%s", project, nic.Network)
@@ -187,6 +187,20 @@ func (d *GCPDriver) Delete() error {
 	metrics.APIRequestCount.With(prometheus.Labels{"provider": "gcp", "service": "compute"}).Inc()
 
 	return waitUntilOperationCompleted(computeService, project, zone, operation.Name)
+}
+
+func (d *GCPDriver) getUserData() *compute.MetadataItems {
+	if strings.HasPrefix(d.UserData, "#cloud-config") {
+		return &compute.MetadataItems{
+			Key:   "user-data",
+			Value: &d.UserData,
+		}
+	}
+
+	return &compute.MetadataItems{
+		Key:   "startup-script",
+		Value: &d.UserData,
+	}
 }
 
 // GetExisting method is used to get machineID for existing GCP machine
