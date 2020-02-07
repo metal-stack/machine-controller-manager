@@ -548,7 +548,7 @@ func (c *controller) checkPacketMachineClass() {
 func (c *controller) checkMetalMachineClass() {
 	MetalMachineClasses, err := c.metalMachineClassLister.List(labels.Everything())
 	if err != nil {
-		glog.Error("Safety-Net: Error getting machineClasses")
+		klog.Error("Safety-Net: Error getting machineClasses")
 		return
 	}
 

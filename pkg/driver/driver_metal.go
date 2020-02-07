@@ -24,8 +24,8 @@ import (
 	v1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/golang/glog"
 	metalgo "github.com/metal-pod/metal-go"
+	"k8s.io/klog"
 )
 
 // MetalDriver is the driver struct for holding Metal machine information
@@ -40,6 +40,16 @@ type MetalDriver struct {
 // NewMetalDriver returns an empty MetalDriver object
 func NewMetalDriver(create func() (string, error), delete func() error, existing func() (string, error)) Driver {
 	return &MetalDriver{}
+}
+
+// GetUserData return the used data whit which the VM will be booted
+func (d *MetalDriver) GetUserData() string {
+	return d.UserData
+}
+
+// SetUserData set the used data whit which the VM will be booted
+func (d *MetalDriver) SetUserData(userData string) {
+	d.UserData = userData
 }
 
 // Create method is used to create a Metal machine
@@ -71,14 +81,14 @@ func (d *MetalDriver) Create() (string, string, error) {
 
 	mcr, err := svc.MachineCreate(createRequest)
 	if err != nil {
-		glog.Errorf("Could not create machine: %v", err)
+		klog.Errorf("Could not create machine: %v", err)
 		return "Error", "Error", err
 	}
 	return d.encodeMachineID(*mcr.Machine.Partition.ID, *mcr.Machine.ID), *mcr.Machine.Allocation.Name, nil
 }
 
 // Delete method is used to delete a Machine machine
-func (d *MetalDriver) Delete() error {
+func (d *MetalDriver) Delete(machineID string) error {
 
 	svc, err := d.createSVC()
 	if err != nil {
@@ -88,11 +98,11 @@ func (d *MetalDriver) Delete() error {
 	hostname := d.MachineName
 	project := d.MetalMachineClass.Spec.Project
 	partition := d.MetalMachineClass.Spec.Partition
-	machineID := d.decodeMachineID(d.MachineID)
+	machine := d.decodeMachineID(machineID)
 	networkID := d.MetalMachineClass.Spec.Network
 
 	mfr := &metalgo.MachineFindRequest{
-		ID:                 &machineID,
+		ID:                 &machine,
 		AllocationHostname: &hostname,
 		AllocationProject:  &project,
 		NetworkIDs:         []string{networkID},
@@ -100,22 +110,22 @@ func (d *MetalDriver) Delete() error {
 	}
 	m, err := svc.MachineFind(mfr)
 	if err != nil {
-		glog.Errorf("Error searching machine %s: in project:%s partition: %s hostname: %s %v", d.MachineID, project, partition, hostname, err)
+		klog.Errorf("Error searching machine %s: in project:%s partition: %s hostname: %s %v", d.MachineID, project, partition, hostname, err)
 		return err
 	}
 	if len(m.Machines) > 1 {
 		errMsg := fmt.Sprintf("Error searching machine %s: in project: %s partition: %s hostname: %s, more than one search result %d", d.MachineID, project, partition, hostname, len(m.Machines))
-		glog.Errorf(errMsg)
+		klog.Errorf(errMsg)
 		return fmt.Errorf(errMsg)
 	}
 	if len(m.Machines) == 0 {
-		glog.Infof("no machine %s: in project:%s partition: %s hostname: %s found", d.MachineID, project, partition, hostname)
+		klog.Infof("no machine %s: in project:%s partition: %s hostname: %s found", d.MachineID, project, partition, hostname)
 		return nil
 	}
 	id := m.Machines[0].ID
 	_, err = svc.MachineDelete(*id)
 	if err != nil {
-		glog.Errorf("Could not terminate machine %s: %v", d.MachineID, err)
+		klog.Errorf("Could not terminate machine %s: %v", d.MachineID, err)
 		return err
 	}
 	return nil
@@ -158,7 +168,7 @@ func (d *MetalDriver) GetVMs(machineID string) (VMs, error) {
 		}
 		mlr, err := svc.MachineFind(findRequest)
 		if err != nil {
-			glog.Errorf("Could not list machines for project %s in partition:%s networkID:%s : %v",
+			klog.Errorf("Could not list machines for project %s in partition:%s networkID:%s : %v",
 				d.MetalMachineClass.Spec.Project, d.MetalMachineClass.Spec.Partition, d.MetalMachineClass.Spec.Network, err)
 			return nil, err
 		}
@@ -181,7 +191,7 @@ func (d *MetalDriver) GetVMs(machineID string) (VMs, error) {
 		machineID = d.decodeMachineID(machineID)
 		mgr, err := svc.MachineGet(machineID)
 		if err != nil {
-			glog.Errorf("Could not get machine %s: %v", machineID, err)
+			klog.Errorf("Could not get machine %s: %v", machineID, err)
 			return nil, err
 		}
 		listOfVMs[machineID] = *mgr.Machine.Allocation.Hostname

@@ -103,7 +103,7 @@ func (c *FakeMetalMachineClasses) DeleteCollection(options *v1.DeleteOptions, li
 // Patch applies the patch and returns the patched metalMachineClass.
 func (c *FakeMetalMachineClasses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.MetalMachineClass, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(metalmachineclassesResource, c.ns, name, data, subresources...), &v1alpha1.MetalMachineClass{})
+		Invokes(testing.NewPatchSubresourceAction(metalmachineclassesResource, c.ns, name, pt, data, subresources...), &v1alpha1.MetalMachineClass{})
 
 	if obj == nil {
 		return nil, err

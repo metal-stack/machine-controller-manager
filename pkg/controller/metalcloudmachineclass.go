@@ -23,7 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 
 	"github.com/gardener/machine-controller-manager/pkg/apis/machine"
 	"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
@@ -66,7 +66,7 @@ func (c *controller) machineToMetalMachineClassDelete(obj interface{}) {
 func (c *controller) metalMachineClassAdd(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		glog.Errorf("Couldn't get key for object %+v: %v", obj, err)
+		klog.Errorf("Couldn't get key for object %+v: %v", obj, err)
 		return
 	}
 	c.metalMachineClassQueue.Add(key)
@@ -95,11 +95,11 @@ func (c *controller) reconcileClusterMetalMachineClassKey(key string) error {
 
 	class, err := c.metalMachineClassLister.MetalMachineClasses(c.namespace).Get(name)
 	if errors.IsNotFound(err) {
-		glog.Infof("%s %q: Not doing work because it has been deleted", MetalMachineClassKind, key)
+		klog.Infof("%s %q: Not doing work because it has been deleted", MetalMachineClassKind, key)
 		return nil
 	}
 	if err != nil {
-		glog.Infof("%s %q: Unable to retrieve object from store: %v", MetalMachineClassKind, key, err)
+		klog.Infof("%s %q: Unable to retrieve object from store: %v", MetalMachineClassKind, key, err)
 		return err
 	}
 
@@ -107,10 +107,10 @@ func (c *controller) reconcileClusterMetalMachineClassKey(key string) error {
 }
 
 func (c *controller) reconcileClusterMetalMachineClass(class *v1alpha1.MetalMachineClass) error {
-	glog.V(4).Info("Start Reconciling metalmachineclass: ", class.Name)
+	klog.V(4).Info("Start Reconciling metalmachineclass: ", class.Name)
 	defer func() {
 		c.enqueueMetalMachineClassAfter(class, 10*time.Minute)
-		glog.V(4).Info("Stop Reconciling metalmachineclass: ", class.Name)
+		klog.V(4).Info("Stop Reconciling metalmachineclass: ", class.Name)
 	}()
 
 	internalClass := &machine.MetalMachineClass{}
@@ -121,7 +121,7 @@ func (c *controller) reconcileClusterMetalMachineClass(class *v1alpha1.MetalMach
 	// TODO this should be put in own API server
 	validationerr := validation.ValidateMetalMachineClass(internalClass)
 	if validationerr.ToAggregate() != nil && len(validationerr.ToAggregate().Errors()) > 0 {
-		glog.V(2).Infof("Validation of %s failed %s", MetalMachineClassKind, validationerr.ToAggregate().Error())
+		klog.V(2).Infof("Validation of %s failed %s", MetalMachineClassKind, validationerr.ToAggregate().Error())
 		return nil
 	}
 
@@ -155,7 +155,7 @@ func (c *controller) reconcileClusterMetalMachineClass(class *v1alpha1.MetalMach
 			return c.deleteMetalMachineClassFinalizers(class)
 		}
 
-		glog.V(4).Infof("Cannot remove finalizer of %s because still Machine[s|Sets|Deployments] are referencing it", class.Name)
+		klog.V(4).Infof("Cannot remove finalizer of %s because still Machine[s|Sets|Deployments] are referencing it", class.Name)
 		return nil
 	}
 
@@ -201,10 +201,10 @@ func (c *controller) updateMetalMachineClassFinalizers(class *v1alpha1.MetalMach
 	clone.Finalizers = finalizers
 	_, err = c.controlMachineClient.MetalMachineClasses(class.Namespace).Update(clone)
 	if err != nil {
-		glog.Warning("Updating MetalMachineClass failed, retrying. ", class.Name, err)
+		klog.Warning("Updating MetalMachineClass failed, retrying. ", class.Name, err)
 		return err
 	}
-	glog.V(3).Infof("Successfully added/removed finalizer on the Metalmachineclass %q", class.Name)
+	klog.V(3).Infof("Successfully added/removed finalizer on the Metalmachineclass %q", class.Name)
 	return err
 }
 

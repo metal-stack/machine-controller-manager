@@ -259,7 +259,7 @@ func (c *controller) validateMachineClass(classSpec *v1alpha1.ClassSpec) (interf
 	case "MetalMachineClass":
 		MetalMachineClass, err := c.metalMachineClassLister.MetalMachineClasses(c.namespace).Get(classSpec.Name)
 		if err != nil {
-			glog.V(2).Infof("MetalMachineClass %q/%q not found. Skipping. %v", c.namespace, classSpec.Name, err)
+			klog.V(2).Infof("MetalMachineClass %q/%q not found. Skipping. %v", c.namespace, classSpec.Name, err)
 			return MachineClass, secretRef, err
 		}
 		MachineClass = MetalMachineClass
@@ -268,20 +268,20 @@ func (c *controller) validateMachineClass(classSpec *v1alpha1.ClassSpec) (interf
 		internalMetalMachineClass := &machineapi.MetalMachineClass{}
 		err = c.internalExternalScheme.Convert(MetalMachineClass, internalMetalMachineClass, nil)
 		if err != nil {
-			glog.V(2).Info("Error in scheme conversion")
+			klog.V(2).Info("Error in scheme conversion")
 			return MachineClass, secretRef, err
 		}
 
 		validationerr := validation.ValidateMetalMachineClass(internalMetalMachineClass)
 		if validationerr.ToAggregate() != nil && len(validationerr.ToAggregate().Errors()) > 0 {
-			glog.V(2).Infof("Validation of MetalMachineClass failed %s", validationerr.ToAggregate().Error())
+			klog.V(2).Infof("Validation of MetalMachineClass failed %s", validationerr.ToAggregate().Error())
 			return MachineClass, secretRef, nil
 		}
 
 		// Get secretRef
 		secretRef, err = c.getSecret(MetalMachineClass.Spec.SecretRef, MetalMachineClass.Name)
 		if err != nil || secretRef == nil {
-			glog.V(2).Info("Secret reference not found")
+			klog.V(2).Info("Secret reference not found")
 			return MachineClass, secretRef, err
 		}
 
