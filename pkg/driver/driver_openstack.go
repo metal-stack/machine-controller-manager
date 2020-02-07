@@ -24,14 +24,17 @@ import (
 	"net/http"
 	"strings"
 
-	v1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
+
+	"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/gardener/machine-controller-manager/pkg/metrics"
-	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/images"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
@@ -52,7 +55,7 @@ type OpenStackDriver struct {
 // deleteOnFail method is used to delete the VM, which was created with an error
 func (d *OpenStackDriver) deleteOnFail(err error) error {
 	// this method is called after the d.MachineID has been set
-	if e := d.Delete(); e != nil {
+	if e := d.Delete(d.MachineID); e != nil {
 		return fmt.Errorf("Error deleting machine %s (%s) after unsuccessful create attempt: %s", d.MachineID, e.Error(), err.Error())
 	}
 	return err
@@ -69,19 +72,59 @@ func (d *OpenStackDriver) Create() (string, string, error) {
 	flavorName := d.OpenStackMachineClass.Spec.FlavorName
 	keyName := d.OpenStackMachineClass.Spec.KeyName
 	imageName := d.OpenStackMachineClass.Spec.ImageName
+	imageID := d.OpenStackMachineClass.Spec.ImageID
 	networkID := d.OpenStackMachineClass.Spec.NetworkID
+	specNetworks := d.OpenStackMachineClass.Spec.Networks
 	securityGroups := d.OpenStackMachineClass.Spec.SecurityGroups
 	availabilityZone := d.OpenStackMachineClass.Spec.AvailabilityZone
 	metadata := d.OpenStackMachineClass.Spec.Tags
 	podNetworkCidr := d.OpenStackMachineClass.Spec.PodNetworkCidr
+	rootDiskSize := d.OpenStackMachineClass.Spec.RootDiskSize
 
 	var createOpts servers.CreateOptsBuilder
+	var imageRef string
 
-	imageRef, err := d.recentImageIDFromName(client, imageName)
-	if err != nil {
-		metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
-		return "", "", fmt.Errorf("failed to get image id for image name %s: %s", imageName, err)
+	// use imageID if provided, otherwise try to resolve the imageName to an imageID
+	if imageID != "" {
+		imageRef = imageID
+	} else {
+		imageRef, err = d.recentImageIDFromName(client, imageName)
+		if err != nil {
+			metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
+			return "", "", fmt.Errorf("failed to get image id for image name %s: %s", imageName, err)
+		}
 	}
+
+	nwClient, err := d.createNeutronClient()
+	if err != nil {
+		return "", "", d.deleteOnFail(err)
+	}
+
+	var serverNetworks []servers.Network
+	var podNetworkIds = make(map[string]struct{})
+
+	if len(networkID) > 0 {
+		serverNetworks = append(serverNetworks, servers.Network{UUID: networkID})
+		podNetworkIds[networkID] = struct{}{}
+	} else {
+		for _, network := range specNetworks {
+			var resolvedNetworkID string
+			if len(network.Id) > 0 {
+				resolvedNetworkID = networkID
+			} else {
+				resolvedNetworkID, err = networks.IDFromName(nwClient, network.Name)
+				if err != nil {
+					metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "neutron"}).Inc()
+					return "", "", fmt.Errorf("failed to get uuid for network name %s: %s", network.Name, err)
+				}
+			}
+			serverNetworks = append(serverNetworks, servers.Network{UUID: resolvedNetworkID})
+			if network.PodNetwork {
+				podNetworkIds[resolvedNetworkID] = struct{}{}
+			}
+		}
+	}
+
 	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
 
 	createOpts = &servers.CreateOpts{
@@ -89,7 +132,7 @@ func (d *OpenStackDriver) Create() (string, string, error) {
 		Name:             d.MachineName,
 		FlavorName:       flavorName,
 		ImageRef:         imageRef,
-		Networks:         []servers.Network{{UUID: networkID}},
+		Networks:         serverNetworks,
 		SecurityGroups:   securityGroups,
 		Metadata:         metadata,
 		UserData:         []byte(d.UserData),
@@ -101,8 +144,28 @@ func (d *OpenStackDriver) Create() (string, string, error) {
 		KeyName:           keyName,
 	}
 
-	glog.V(3).Infof("creating machine")
-	server, err := servers.Create(client, createOpts).Extract()
+	if rootDiskSize > 0 {
+		blockDevices, err := resourceInstanceBlockDevicesV2(rootDiskSize, imageRef)
+		if err != nil {
+			return "", "", err
+		}
+
+		createOpts = &bootfromvolume.CreateOptsExt{
+			CreateOptsBuilder: createOpts,
+			BlockDevice:       blockDevices,
+		}
+	}
+
+	klog.V(3).Infof("creating machine")
+
+	var server *servers.Server
+	// If a custom block_device (root disk size is provided) we need to boot from volume
+	if rootDiskSize > 0 {
+		server, err = bootfromvolume.Create(client, createOpts).Extract()
+	} else {
+		server, err = servers.Create(client, createOpts).Extract()
+	}
+
 	if err != nil {
 		metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
 		return "", "", fmt.Errorf("error creating the server: %s", err)
@@ -111,67 +174,67 @@ func (d *OpenStackDriver) Create() (string, string, error) {
 
 	d.MachineID = d.encodeMachineID(d.OpenStackMachineClass.Spec.Region, server.ID)
 
-	nwClient, err := d.createNeutronClient()
-	if err != nil {
-		return "", "", d.deleteOnFail(err)
-	}
-
 	err = waitForStatus(client, server.ID, []string{"BUILD"}, []string{"ACTIVE"}, 600)
 	if err != nil {
 		return "", "", d.deleteOnFail(fmt.Errorf("error waiting for the %q server status: %s", server.ID, err))
 	}
 
 	listOpts := &ports.ListOpts{
-		NetworkID: networkID,
-		DeviceID:  server.ID,
+		DeviceID: server.ID,
 	}
 
 	allPages, err := ports.List(nwClient, listOpts).AllPages()
 	if err != nil {
 		metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "neutron"}).Inc()
-		return "", "", d.deleteOnFail(fmt.Errorf("failed to get ports for network ID %s: %s", networkID, err))
+		return "", "", d.deleteOnFail(fmt.Errorf("failed to get ports: %s", err))
 	}
 	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "neutron"}).Inc()
 
 	allPorts, err := ports.ExtractPorts(allPages)
 	if err != nil {
-		return "", "", d.deleteOnFail(fmt.Errorf("failed to extract ports for network ID %s: %s", networkID, err))
+		return "", "", d.deleteOnFail(fmt.Errorf("failed to extract ports: %s", err))
 	}
 
 	if len(allPorts) == 0 {
-		return "", "", d.deleteOnFail(fmt.Errorf("got an empty port list for network ID %s and server ID %s", networkID, server.ID))
+		return "", "", d.deleteOnFail(fmt.Errorf("got an empty port list for server ID %s", server.ID))
 	}
 
-	port, err := ports.Update(nwClient, allPorts[0].ID, ports.UpdateOpts{
-		AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podNetworkCidr}},
-	}).Extract()
-	if err != nil {
-		metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "neutron"}).Inc()
-		return "", "", d.deleteOnFail(fmt.Errorf("failed to update allowed address pair for port ID %s: %s", port.ID, err))
+	for _, port := range allPorts {
+		for id := range podNetworkIds {
+			if port.NetworkID == id {
+				_, err := ports.Update(nwClient, port.ID, ports.UpdateOpts{
+					AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podNetworkCidr}},
+				}).Extract()
+				if err != nil {
+					metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "neutron"}).Inc()
+					return "", "", d.deleteOnFail(fmt.Errorf("failed to update allowed address pair for port ID %s: %s", port.ID, err))
+				}
+				metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "neutron"}).Inc()
+			}
+		}
 	}
-	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "neutron"}).Inc()
 
 	return d.MachineID, d.MachineName, nil
 }
 
 // Delete method is used to delete an OS machine
-func (d *OpenStackDriver) Delete() error {
-	res, err := d.GetVMs(d.MachineID)
+func (d *OpenStackDriver) Delete(machineID string) error {
+	res, err := d.GetVMs(machineID)
 	if err != nil {
 		return err
 	} else if len(res) == 0 {
 		// No running instance exists with the given machine-ID
-		glog.V(2).Infof("No VM matching the machine-ID found on the provider %q", d.MachineID)
+		klog.V(2).Infof("No VM matching the machine-ID found on the provider %q", machineID)
 		return nil
 	}
 
-	machineID := d.decodeMachineID(d.MachineID)
+	instanceID := d.decodeMachineID(machineID)
 	client, err := d.createNovaClient()
 	if err != nil {
 		return err
 	}
 
-	result := servers.Delete(client, machineID)
+	result := servers.Delete(client, instanceID)
 	if result.Err == nil {
 		// waiting for the machine to be deleted to release consumed quota resources, 5 minutes should be enough
 		err = waitForStatus(client, machineID, nil, []string{"DELETED", "SOFT_DELETED"}, 300)
@@ -179,10 +242,10 @@ func (d *OpenStackDriver) Delete() error {
 			return fmt.Errorf("error waiting for the %q server to be deleted: %s", machineID, err)
 		}
 		metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
-		glog.V(3).Infof("Deleted machine with ID: %s", d.MachineID)
+		klog.V(3).Infof("Deleted machine with ID: %s", machineID)
 	} else {
 		metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
-		glog.Errorf("Failed to delete machine with ID: %s", d.MachineID)
+		klog.Errorf("Failed to delete machine with ID: %s", machineID)
 	}
 
 	return result.Err
@@ -215,7 +278,7 @@ func (d *OpenStackDriver) GetVMs(machineID string) (VMs, error) {
 
 	client, err := d.createNovaClient()
 	if err != nil {
-		glog.Errorf("Could not connect to NovaClient. Error Message - %s", err)
+		klog.Errorf("Could not connect to NovaClient. Error Message - %s", err)
 		return listOfVMs, err
 	}
 
@@ -223,7 +286,7 @@ func (d *OpenStackDriver) GetVMs(machineID string) (VMs, error) {
 	pager := servers.List(client, servers.ListOpts{})
 	if pager.Err != nil {
 		metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
-		glog.Errorf("Could not list instances. Error Message - %s", err)
+		klog.Errorf("Could not list instances. Error Message - %s", err)
 		return listOfVMs, err
 	}
 	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
@@ -252,7 +315,7 @@ func (d *OpenStackDriver) GetVMs(machineID string) (VMs, error) {
 					listOfVMs[instanceID] = server.Name
 				} else if machineID == instanceID {
 					listOfVMs[instanceID] = server.Name
-					glog.V(3).Infof("Found machine with name: %q", server.Name)
+					klog.V(3).Infof("Found machine with name: %q", server.Name)
 					break
 				}
 			}
@@ -443,6 +506,16 @@ func (d *OpenStackDriver) GetVolNames(specs []corev1.PersistentVolumeSpec) ([]st
 	return names, nil
 }
 
+//GetUserData return the used data whit which the VM will be booted
+func (d *OpenStackDriver) GetUserData() string {
+	return d.UserData
+}
+
+//SetUserData set the used data whit which the VM will be booted
+func (d *OpenStackDriver) SetUserData(userData string) {
+	d.UserData = userData
+}
+
 func waitForStatus(c *gophercloud.ServiceClient, id string, pending []string, target []string, secs int) error {
 	return gophercloud.WaitFor(secs, func() (bool, error) {
 		current, err := servers.Get(c, id).Extract()
@@ -473,4 +546,18 @@ func strSliceContains(haystack []string, needle string) bool {
 		}
 	}
 	return false
+}
+
+func resourceInstanceBlockDevicesV2(rootDiskSize int, imageID string) ([]bootfromvolume.BlockDevice, error) {
+	blockDeviceOpts := make([]bootfromvolume.BlockDevice, 1)
+	blockDeviceOpts[0] = bootfromvolume.BlockDevice{
+		UUID:                imageID,
+		VolumeSize:          rootDiskSize,
+		BootIndex:           0,
+		DeleteOnTermination: true,
+		SourceType:          "image",
+		DestinationType:     "volume",
+	}
+	klog.V(2).Infof("[DEBUG] Block Device Options: %+v", blockDeviceOpts)
+	return blockDeviceOpts, nil
 }

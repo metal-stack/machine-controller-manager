@@ -14,6 +14,7 @@ type User struct {
 	EMail  string
 	Name   string
 	Groups []RessourceAccess
+	Tenant string
 }
 
 var (
@@ -41,12 +42,13 @@ func (ra accessGroup) asSet() ressourceSet {
 
 // We overwrite the Audience because in the current version of the jwt library this
 // is not an array.
-type access struct {
+type Claims struct {
 	jwt.StandardClaims
-	Audience interface{} `json:"aud,omitempty"`
-	Groups   []string    `json:"groups"`
-	EMail    string      `json:"email"`
-	Name     string      `json:"name"`
+	Audience        interface{}       `json:"aud,omitempty"`
+	Groups          []string          `json:"groups"`
+	EMail           string            `json:"email"`
+	Name            string            `json:"name"`
+	FederatedClaims map[string]string `json:"federated_claims"`
 }
 
 // HasGroup returns true if the user has at least one of the given groups.

@@ -20,14 +20,13 @@ package controller
 import (
 	"time"
 
-	"k8s.io/api/core/v1"
+	"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/cache"
-
-	"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
-	"github.com/golang/glog"
+	"k8s.io/klog"
 )
 
 // reconcileClusterSecretKey reconciles an secret due to controller resync
@@ -43,10 +42,10 @@ func (c *controller) reconcileClusterSecretKey(key string) error {
 
 	secret, err := c.secretLister.Secrets(c.namespace).Get(name)
 	if errors.IsNotFound(err) {
-		glog.V(4).Infof("%q: Not doing work because it has been deleted", key)
+		klog.V(4).Infof("%q: Not doing work because it has been deleted", key)
 		return nil
 	} else if err != nil {
-		glog.V(4).Infof("%q: Unable to retrieve object from store: %v", key, err)
+		klog.V(4).Infof("%q: Unable to retrieve object from store: %v", key, err)
 		return err
 	}
 
@@ -55,13 +54,13 @@ func (c *controller) reconcileClusterSecretKey(key string) error {
 
 // reconcileClusterSecret manipulates finalizers based on
 // machineClass references
-func (c *controller) reconcileClusterSecret(secret *v1.Secret) error {
+func (c *controller) reconcileClusterSecret(secret *corev1.Secret) error {
 	startTime := time.Now()
 
-	glog.V(4).Infof("Start syncing %q", secret.Name)
+	klog.V(4).Infof("Start syncing %q", secret.Name)
 	defer func() {
 		c.enqueueSecretAfter(secret, 10*time.Minute)
-		glog.V(4).Infof("Finished syncing %q (%v)", secret.Name, time.Since(startTime))
+		klog.V(4).Infof("Finished syncing %q (%v)", secret.Name, time.Since(startTime))
 	}()
 
 	// Check if machineClasses are referring to this secret
@@ -95,7 +94,7 @@ func (c *controller) reconcileClusterSecret(secret *v1.Secret) error {
 	Manipulate Finalizers
 */
 
-func (c *controller) addSecretFinalizers(secret *v1.Secret) error {
+func (c *controller) addSecretFinalizers(secret *corev1.Secret) error {
 	clone := secret.DeepCopy()
 
 	if finalizers := sets.NewString(clone.Finalizers...); !finalizers.Has(DeleteFinalizerName) {
@@ -105,7 +104,7 @@ func (c *controller) addSecretFinalizers(secret *v1.Secret) error {
 	return nil
 }
 
-func (c *controller) deleteSecretFinalizers(secret *v1.Secret) error {
+func (c *controller) deleteSecretFinalizers(secret *corev1.Secret) error {
 	clone := secret.DeepCopy()
 
 	if finalizers := sets.NewString(clone.Finalizers...); finalizers.Has(DeleteFinalizerName) {
@@ -115,22 +114,22 @@ func (c *controller) deleteSecretFinalizers(secret *v1.Secret) error {
 	return nil
 }
 
-func (c *controller) updateSecretFinalizers(secret *v1.Secret, finalizers []string) error {
+func (c *controller) updateSecretFinalizers(secret *corev1.Secret, finalizers []string) error {
 	// Get the latest version of the secret so that we can avoid conflicts
-	secret, err := c.controlCoreClient.Core().Secrets(secret.Namespace).Get(secret.Name, metav1.GetOptions{})
+	secret, err := c.controlCoreClient.CoreV1().Secrets(secret.Namespace).Get(secret.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
 	clone := secret.DeepCopy()
 	clone.Finalizers = finalizers
-	_, err = c.controlCoreClient.Core().Secrets(clone.Namespace).Update(clone)
+	_, err = c.controlCoreClient.CoreV1().Secrets(clone.Namespace).Update(clone)
 
 	if err != nil {
-		glog.Warning("Updating secret finalizers failed, retrying", secret.Name, err)
+		klog.Warning("Updating secret finalizers failed, retrying", secret.Name, err)
 		return err
 	}
-	glog.V(3).Infof("Successfully added/removed finalizer on the secret %q", secret.Name)
+	klog.V(3).Infof("Successfully added/removed finalizer on the secret %q", secret.Name)
 	return err
 }
 
@@ -142,7 +141,7 @@ func (c *controller) updateSecretFinalizers(secret *v1.Secret, finalizers []stri
 func (c *controller) secretAdd(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		glog.Errorf("Couldn't get key for object %+v: %v", obj, err)
+		klog.Errorf("Couldn't get key for object %+v: %v", obj, err)
 		return
 	}
 	c.secretQueue.Add(key)

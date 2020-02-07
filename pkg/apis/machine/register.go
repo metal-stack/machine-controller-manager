@@ -70,6 +70,9 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&MetalMachineClass{},
 		&MetalMachineClassList{},
 
+		&MachineClass{},
+		&MachineClassList{},
+
 		&Machine{},
 		&MachineList{},
 

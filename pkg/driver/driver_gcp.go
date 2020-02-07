@@ -27,7 +27,6 @@ import (
 
 	v1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/gardener/machine-controller-manager/pkg/metrics"
-	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -35,6 +34,7 @@ import (
 	"google.golang.org/api/googleapi"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog"
 )
 
 // GCPDriver is the driver struct for holding GCP machine information
@@ -152,26 +152,26 @@ func (d *GCPDriver) Create() (string, string, error) {
 }
 
 // Delete method is used to delete a GCP machine
-func (d *GCPDriver) Delete() error {
+func (d *GCPDriver) Delete(machineID string) error {
 
-	result, err := d.GetVMs(d.MachineID)
+	result, err := d.GetVMs(machineID)
 	if err != nil {
 		return err
 	} else if len(result) == 0 {
 		// No running instance exists with the given machine-ID
-		glog.V(2).Infof("No VM matching the machine-ID found on the provider %q", d.MachineID)
+		klog.V(2).Infof("No VM matching the machine-ID found on the provider %q", machineID)
 		return nil
 	}
 
 	ctx, computeService, err := d.createComputeService()
 	if err != nil {
-		glog.Error(err)
+		klog.Error(err)
 		return err
 	}
 
-	project, zone, name, err := d.decodeMachineID(d.MachineID)
+	project, zone, name, err := d.decodeMachineID(machineID)
 	if err != nil {
-		glog.Error(err)
+		klog.Error(err)
 		return err
 	}
 
@@ -181,7 +181,7 @@ func (d *GCPDriver) Delete() error {
 		if ae, ok := err.(*googleapi.Error); ok && ae.Code == http.StatusNotFound {
 			return nil
 		}
-		glog.Error(err)
+		klog.Error(err)
 		return err
 	}
 	metrics.APIRequestCount.With(prometheus.Labels{"provider": "gcp", "service": "compute"}).Inc()
@@ -229,13 +229,13 @@ func (d *GCPDriver) GetVMs(machineID string) (VMs, error) {
 
 	ctx, computeService, err := d.createComputeService()
 	if err != nil {
-		glog.Error(err)
+		klog.Error(err)
 		return listOfVMs, err
 	}
 
 	project, err := extractProject(d.CloudConfig.Data[v1alpha1.GCPServiceAccountJSON])
 	if err != nil {
-		glog.Error(err)
+		klog.Error(err)
 		return listOfVMs, err
 	}
 
@@ -262,7 +262,7 @@ func (d *GCPDriver) GetVMs(machineID string) (VMs, error) {
 					listOfVMs[instanceID] = server.Name
 				} else if machineID == instanceID {
 					listOfVMs[instanceID] = server.Name
-					glog.V(3).Infof("Found machine with name: %q", server.Name)
+					klog.V(3).Infof("Found machine with name: %q", server.Name)
 					break
 				}
 			}
@@ -270,7 +270,7 @@ func (d *GCPDriver) GetVMs(machineID string) (VMs, error) {
 		return nil
 	}); err != nil {
 		metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "gcp", "service": "compute"}).Inc()
-		glog.Error(err)
+		klog.Error(err)
 		return listOfVMs, err
 	}
 	metrics.APIRequestCount.With(prometheus.Labels{"provider": "gcp", "service": "compute"}).Inc()
@@ -301,7 +301,7 @@ func waitUntilOperationCompleted(computeService *compute.Service, project, zone,
 		if err != nil {
 			return false, err
 		}
-		glog.V(3).Infof("Waiting for operation to be completed... (status: %s)", op.Status)
+		klog.V(3).Infof("Waiting for operation to be completed... (status: %s)", op.Status)
 		if op.Status == "DONE" {
 			if op.Error == nil {
 				return true, nil
@@ -357,4 +357,14 @@ func (d *GCPDriver) GetVolNames(specs []corev1.PersistentVolumeSpec) ([]string, 
 		names = append(names, name)
 	}
 	return names, nil
+}
+
+//GetUserData return the used data whit which the VM will be booted
+func (d *GCPDriver) GetUserData() string {
+	return d.UserData
+}
+
+//SetUserData set the used data whit which the VM will be booted
+func (d *GCPDriver) SetUserData(userData string) {
+	d.UserData = userData
 }

@@ -33,7 +33,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/golang/glog"
+	"k8s.io/klog"
 )
 
 // AWSDriver is the driver struct for holding AWS machine information
@@ -52,8 +52,11 @@ func NewAWSDriver(create func() (string, error), delete func() error, existing f
 
 // Create method is used to create a AWS machine
 func (d *AWSDriver) Create() (string, string, error) {
+	svc, err := d.createSVC()
+	if err != nil {
+		return "Error", "Error", err
+	}
 
-	svc := d.createSVC()
 	UserDataEnc := base64.StdEncoding.EncodeToString([]byte(d.UserData))
 
 	var imageIds []*string
@@ -74,25 +77,63 @@ func (d *AWSDriver) Create() (string, string, error) {
 		return "Error", "Error", fmt.Errorf("Image %s not found", *imageID)
 	}
 
-	var blkDeviceMappings []*ec2.BlockDeviceMapping
-	deviceName := output.Images[0].RootDeviceName
-	volumeSize := d.AWSMachineClass.Spec.BlockDevices[0].Ebs.VolumeSize
-	volumeType := d.AWSMachineClass.Spec.BlockDevices[0].Ebs.VolumeType
-	blkDeviceMapping := ec2.BlockDeviceMapping{
-		DeviceName: deviceName,
-		Ebs: &ec2.EbsBlockDevice{
-			VolumeSize: &volumeSize,
-			VolumeType: &volumeType,
+	blkDeviceMappings, err := d.generateBlockDevices(d.AWSMachineClass.Spec.BlockDevices, output.Images[0].RootDeviceName)
+	if err != nil {
+		return "Error", "Error", err
+	}
+
+	tagInstance, err := d.generateTags(d.AWSMachineClass.Spec.Tags)
+	if err != nil {
+		return "Error", "Error", err
+	}
+
+	securityGroupIDs, err := d.generateSecurityGroups(d.AWSMachineClass.Spec.NetworkInterfaces[0].SecurityGroupIDs)
+	if err != nil {
+		return "Error", "Error", err
+	}
+
+	// Specify the details of the machine that you want to create.
+	inputConfig := ec2.RunInstancesInput{
+		// An Amazon Linux AMI ID for t2.micro machines in the us-west-2 region
+		ImageId:      aws.String(d.AWSMachineClass.Spec.AMI),
+		InstanceType: aws.String(d.AWSMachineClass.Spec.MachineType),
+		MinCount:     aws.Int64(1),
+		MaxCount:     aws.Int64(1),
+		UserData:     &UserDataEnc,
+		KeyName:      aws.String(d.AWSMachineClass.Spec.KeyName),
+		SubnetId:     aws.String(d.AWSMachineClass.Spec.NetworkInterfaces[0].SubnetID),
+		IamInstanceProfile: &ec2.IamInstanceProfileSpecification{
+			Name: &(d.AWSMachineClass.Spec.IAM.Name),
 		},
+		SecurityGroupIds:    securityGroupIDs,
+		BlockDeviceMappings: blkDeviceMappings,
+		TagSpecifications:   []*ec2.TagSpecification{tagInstance},
 	}
-	if volumeType == "io1" {
-		blkDeviceMapping.Ebs.Iops = &d.AWSMachineClass.Spec.BlockDevices[0].Ebs.Iops
+
+	runResult, err := svc.RunInstances(&inputConfig)
+	if err != nil {
+		metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "aws", "service": "ecs"}).Inc()
+		return "Error", "Error", err
 	}
-	blkDeviceMappings = append(blkDeviceMappings, &blkDeviceMapping)
+	metrics.APIRequestCount.With(prometheus.Labels{"provider": "aws", "service": "ecs"}).Inc()
+
+	return d.encodeMachineID(d.AWSMachineClass.Spec.Region, *runResult.Instances[0].InstanceId), *runResult.Instances[0].PrivateDnsName, nil
+}
+
+func (d *AWSDriver) generateSecurityGroups(sgIDs []string) ([]*string, error) {
+
+	var securityGroupIDs []*string
+	for _, sg := range sgIDs {
+		securityGroupIDs = append(securityGroupIDs, aws.String(sg))
+	}
+	return securityGroupIDs, nil
+}
+
+func (d *AWSDriver) generateTags(tags map[string]string) (*ec2.TagSpecification, error) {
 
 	// Add tags to the created machine
 	tagList := []*ec2.Tag{}
-	for idx, element := range d.AWSMachineClass.Spec.Tags {
+	for idx, element := range tags {
 		if idx == "Name" {
 			// Name tag cannot be set, as its used to identify backing machine object
 			continue
@@ -113,53 +154,64 @@ func (d *AWSDriver) Create() (string, string, error) {
 		ResourceType: aws.String("instance"),
 		Tags:         tagList,
 	}
+	return tagInstance, nil
+}
 
-	// Specify the details of the machine that you want to create.
-	inputConfig := ec2.RunInstancesInput{
-		// An Amazon Linux AMI ID for t2.micro machines in the us-west-2 region
-		ImageId:      aws.String(d.AWSMachineClass.Spec.AMI),
-		InstanceType: aws.String(d.AWSMachineClass.Spec.MachineType),
-		MinCount:     aws.Int64(1),
-		MaxCount:     aws.Int64(1),
-		UserData:     &UserDataEnc,
-		KeyName:      aws.String(d.AWSMachineClass.Spec.KeyName),
-		SubnetId:     aws.String(d.AWSMachineClass.Spec.NetworkInterfaces[0].SubnetID),
-		IamInstanceProfile: &ec2.IamInstanceProfileSpecification{
-			Name: &(d.AWSMachineClass.Spec.IAM.Name),
-		},
-		SecurityGroupIds:    []*string{aws.String(d.AWSMachineClass.Spec.NetworkInterfaces[0].SecurityGroupIDs[0])},
-		BlockDeviceMappings: blkDeviceMappings,
-		TagSpecifications:   []*ec2.TagSpecification{tagInstance},
+func (d *AWSDriver) generateBlockDevices(blockDevices []v1alpha1.AWSBlockDeviceMappingSpec, rootDeviceName *string) ([]*ec2.BlockDeviceMapping, error) {
+
+	var blkDeviceMappings []*ec2.BlockDeviceMapping
+	// if blockDevices is empty, AWS will automatically create a root partition
+	for _, disk := range blockDevices {
+
+		deviceName := disk.DeviceName
+		if disk.DeviceName == "/root" || len(blockDevices) == 1 {
+			deviceName = *rootDeviceName
+		}
+		volumeSize := disk.Ebs.VolumeSize
+		volumeType := disk.Ebs.VolumeType
+		deleteOnTermination := disk.Ebs.DeleteOnTermination
+		encrypted := disk.Ebs.Encrypted
+
+		blkDeviceMapping := ec2.BlockDeviceMapping{
+			DeviceName: aws.String(deviceName),
+			Ebs: &ec2.EbsBlockDevice{
+				DeleteOnTermination: aws.Bool(deleteOnTermination),
+				Encrypted:           aws.Bool(encrypted),
+				VolumeSize:          aws.Int64(volumeSize),
+				VolumeType:          aws.String(volumeType),
+			},
+		}
+		if volumeType == "io1" {
+			blkDeviceMapping.Ebs.Iops = aws.Int64(disk.Ebs.Iops)
+		}
+		blkDeviceMappings = append(blkDeviceMappings, &blkDeviceMapping)
 	}
 
-	runResult, err := svc.RunInstances(&inputConfig)
-	if err != nil {
-		metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "aws", "service": "ecs"}).Inc()
-		return "Error", "Error", err
-	}
-	metrics.APIRequestCount.With(prometheus.Labels{"provider": "aws", "service": "ecs"}).Inc()
-
-	return d.encodeMachineID(d.AWSMachineClass.Spec.Region, *runResult.Instances[0].InstanceId), *runResult.Instances[0].PrivateDnsName, nil
+	return blkDeviceMappings, nil
 }
 
 // Delete method is used to delete a AWS machine
-func (d *AWSDriver) Delete() error {
+func (d *AWSDriver) Delete(machineID string) error {
 
-	result, err := d.GetVMs(d.MachineID)
+	result, err := d.GetVMs(machineID)
 	if err != nil {
 		return err
 	} else if len(result) == 0 {
 		// No running instance exists with the given machine-ID
-		glog.V(2).Infof("No VM matching the machine-ID found on the provider %q", d.MachineID)
+		klog.V(2).Infof("No VM matching the machine-ID found on the provider %q", machineID)
 		return nil
 	}
 
-	machineID := d.decodeMachineID(d.MachineID)
+	instanceID := d.decodeMachineID(machineID)
 
-	svc := d.createSVC()
+	svc, err := d.createSVC()
+	if err != nil {
+		return err
+	}
+
 	input := &ec2.TerminateInstancesInput{
 		InstanceIds: []*string{
-			aws.String(machineID),
+			aws.String(instanceID),
 		},
 		DryRun: aws.Bool(true),
 	}
@@ -171,13 +223,13 @@ func (d *AWSDriver) Delete() error {
 		output, err := svc.TerminateInstances(input)
 		if err != nil {
 			metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "aws", "service": "ecs"}).Inc()
-			glog.Errorf("Could not terminate machine: %s", err.Error())
+			klog.Errorf("Could not terminate machine: %s", err.Error())
 			return err
 		}
 		metrics.APIRequestCount.With(prometheus.Labels{"provider": "aws", "service": "ecs"}).Inc()
 
 		vmState := output.TerminatingInstances[0]
-		//glog.Info(vmState.PreviousState, vmState.CurrentState)
+		//klog.Info(vmState.PreviousState, vmState.CurrentState)
 
 		if *vmState.CurrentState.Name == "shutting-down" ||
 			*vmState.CurrentState.Name == "terminated" {
@@ -187,7 +239,7 @@ func (d *AWSDriver) Delete() error {
 		err = errors.New("Machine already terminated")
 	}
 
-	glog.Errorf("Could not terminate machine: %s", err.Error())
+	klog.Errorf("Could not terminate machine: %s", err.Error())
 	return err
 }
 
@@ -216,7 +268,11 @@ func (d *AWSDriver) GetVMs(machineID string) (VMs, error) {
 		return listOfVMs, nil
 	}
 
-	svc := d.createSVC()
+	svc, err := d.createSVC()
+	if err != nil {
+		return listOfVMs, err
+	}
+
 	input := ec2.DescribeInstancesInput{
 		Filters: []*ec2.Filter{
 			{
@@ -258,7 +314,7 @@ func (d *AWSDriver) GetVMs(machineID string) (VMs, error) {
 	runResult, err := svc.DescribeInstances(&input)
 	if err != nil {
 		metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "aws", "service": "ecs"}).Inc()
-		glog.Errorf("AWS driver is returning error while describe instances request is sent: %s", err)
+		klog.Errorf("AWS driver is returning error while describe instances request is sent: %s", err)
 		return listOfVMs, err
 	}
 	metrics.APIRequestCount.With(prometheus.Labels{"provider": "aws", "service": "ecs"}).Inc()
@@ -281,24 +337,29 @@ func (d *AWSDriver) GetVMs(machineID string) (VMs, error) {
 }
 
 // Helper function to create SVC
-func (d *AWSDriver) createSVC() *ec2.EC2 {
+func (d *AWSDriver) createSVC() (*ec2.EC2, error) {
+	var (
+		config = &aws.Config{
+			Region: aws.String(d.AWSMachineClass.Spec.Region),
+		}
 
-	accessKeyID := strings.TrimSpace(string(d.CloudConfig.Data[v1alpha1.AWSAccessKeyID]))
-	secretAccessKey := strings.TrimSpace(string(d.CloudConfig.Data[v1alpha1.AWSSecretAccessKey]))
+		accessKeyID     = strings.TrimSpace(string(d.CloudConfig.Data[v1alpha1.AWSAccessKeyID]))
+		secretAccessKey = strings.TrimSpace(string(d.CloudConfig.Data[v1alpha1.AWSSecretAccessKey]))
+	)
 
 	if accessKeyID != "" && secretAccessKey != "" {
-		return ec2.New(session.New(&aws.Config{
-			Region: aws.String(d.AWSMachineClass.Spec.Region),
-			Credentials: credentials.NewStaticCredentialsFromCreds(credentials.Value{
-				AccessKeyID:     accessKeyID,
-				SecretAccessKey: secretAccessKey,
-			}),
-		}))
+		config.Credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
+			AccessKeyID:     accessKeyID,
+			SecretAccessKey: secretAccessKey,
+		})
 	}
 
-	return ec2.New(session.New(&aws.Config{
-		Region: aws.String(d.AWSMachineClass.Spec.Region),
-	}))
+	s, err := session.NewSession(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return ec2.New(s), nil
 }
 
 func (d *AWSDriver) encodeMachineID(region, machineID string) string {
@@ -323,4 +384,14 @@ func (d *AWSDriver) GetVolNames(specs []corev1.PersistentVolumeSpec) ([]string, 
 		names = append(names, name)
 	}
 	return names, nil
+}
+
+//GetUserData return the used data whit which the VM will be booted
+func (d *AWSDriver) GetUserData() string {
+	return d.UserData
+}
+
+//SetUserData set the used data whit which the VM will be booted
+func (d *AWSDriver) SetUserData(userData string) {
+	d.UserData = userData
 }

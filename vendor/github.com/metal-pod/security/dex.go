@@ -24,6 +24,8 @@ type Dex struct {
 	keys            chan<- keyRQ
 	update          chan updater
 	refreshInterval time.Duration
+
+	userExtractor UserExtractorFn
 }
 
 type keyRsp struct {
@@ -39,11 +41,33 @@ func NewDex(baseurl string) (*Dex, error) {
 	dx := &Dex{
 		baseURL:         baseurl,
 		refreshInterval: refetchInterval,
+		userExtractor:   defaultUserExtractor,
 	}
 	if err := dx.keyfetcher(); err != nil {
 		return nil, err
 	}
 	return dx, nil
+}
+
+// Option configures Dex
+type Option func(dex *Dex) *Dex
+
+// With sets available Options
+func (dx *Dex) With(opts ...Option) *Dex {
+	for _, opt := range opts {
+		opt(dx)
+	}
+	return dx
+}
+
+// UserExtractorFn extracts the User and Claims
+type UserExtractorFn func(claims *Claims) (*User, error)
+
+func UserExtractor(fn UserExtractorFn) Option {
+	return func(dex *Dex) *Dex {
+		dex.userExtractor = fn
+		return dex
+	}
 }
 
 // the keyfetcher fetches the keys from the remote dex at a regular interval.
@@ -130,26 +154,38 @@ func (dx *Dex) User(rq *http.Request) (*User, error) {
 		// no Bearer token
 		return nil, errNoAuthFound
 	}
-	btoken := strings.TrimSpace(splitToken[1])
-	token, err := jwt.ParseWithClaims(btoken, &access{}, func(token *jwt.Token) (interface{}, error) {
+	bearerToken := strings.TrimSpace(splitToken[1])
+
+	token, err := jwt.ParseWithClaims(bearerToken, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		kid := token.Header["kid"].(string)
 		return dx.searchKey(kid)
 	})
-
 	if err != nil {
 		return nil, err
 	}
-	if claims, ok := token.Claims.(*access); ok && token.Valid {
-		var grps []RessourceAccess
-		for _, g := range claims.Groups {
-			grps = append(grps, RessourceAccess(g))
-		}
-		usr := User{
-			Name:   claims.Name,
-			EMail:  claims.EMail,
-			Groups: grps,
-		}
-		return &usr, nil
+	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+		return dx.userExtractor(claims)
 	}
 	return nil, fmt.Errorf("invalid claims")
+}
+
+func defaultUserExtractor(claims *Claims) (*User, error) {
+	var grps []RessourceAccess
+	for _, g := range claims.Groups {
+		grps = append(grps, RessourceAccess(g))
+	}
+	tenant := ""
+	if claims.FederatedClaims != nil {
+		cid := claims.FederatedClaims["connector_id"]
+		if cid != "" {
+			tenant = strings.Split(cid, "_")[0]
+		}
+	}
+	usr := User{
+		Name:   claims.Name,
+		EMail:  claims.EMail,
+		Groups: grps,
+		Tenant: tenant,
+	}
+	return &usr, nil
 }

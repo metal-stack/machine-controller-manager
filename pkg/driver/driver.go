@@ -25,10 +25,12 @@ import (
 // Driver is the common interface for creation/deletion of the VMs over different cloud-providers.
 type Driver interface {
 	Create() (string, string, error)
-	Delete() error
+	Delete(string) error
 	GetExisting() (string, error)
 	GetVMs(string) (VMs, error)
 	GetVolNames([]corev1.PersistentVolumeSpec) ([]string, error)
+	GetUserData() string
+	SetUserData(string)
 }
 
 // VMs maintains a list of VM returned by the provider
@@ -106,7 +108,7 @@ func NewDriver(machineID string, secretRef *corev1.Secret, classKind string, mac
 		func() (string, string, error) {
 			return "fake", "fake_ip", nil
 		},
-		func() error {
+		func(string) error {
 			return nil
 		},
 		func() (string, error) {

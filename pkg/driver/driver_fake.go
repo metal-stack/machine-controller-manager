@@ -22,14 +22,14 @@ import corev1 "k8s.io/api/core/v1"
 // FakeDriver is a fake driver returned when none of the actual drivers match
 type FakeDriver struct {
 	create func() (string, string, error)
-	delete func() error
+	delete func(string) error
 	//existing func() (string, v1alpha1.MachinePhase, error)
 	existing    func() (string, error)
 	getVolNames func([]corev1.PersistentVolumeSpec) ([]string, error)
 }
 
 // NewFakeDriver returns a new fakedriver object
-func NewFakeDriver(create func() (string, string, error), delete func() error, existing func() (string, error)) Driver {
+func NewFakeDriver(create func() (string, string, error), delete func(string) error, existing func() (string, error)) Driver {
 	return &FakeDriver{
 		create:   create,
 		delete:   delete,
@@ -43,8 +43,8 @@ func (d *FakeDriver) Create() (string, string, error) {
 }
 
 // Delete deletes a fake driver
-func (d *FakeDriver) Delete() error {
-	return d.delete()
+func (d *FakeDriver) Delete(machineID string) error {
+	return d.delete(machineID)
 }
 
 // GetExisting returns the existing fake driver
@@ -62,4 +62,14 @@ func (d *FakeDriver) GetVMs(name string) (VMs, error) {
 func (d *FakeDriver) GetVolNames(specs []corev1.PersistentVolumeSpec) ([]string, error) {
 	volNames := []string{}
 	return volNames, nil
+}
+
+//GetUserData return the used data whit which the VM will be booted
+func (d *FakeDriver) GetUserData() string {
+	return ""
+}
+
+//SetUserData set the used data whit which the VM will be booted
+func (d *FakeDriver) SetUserData(userData string) {
+	return
 }

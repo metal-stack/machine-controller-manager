@@ -2,7 +2,9 @@ package security
 
 import (
 	"crypto/hmac"
+	crand "crypto/rand"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"math/rand"
@@ -15,8 +17,9 @@ import (
 
 // Our constant header names
 const (
-	tsHeader   = "X-Date"
-	saltHeader = "X-Data-Salt"
+	AuthzHeaderKey = "Authorization"
+	TsHeaderKey    = "X-Date"
+	SaltHeaderKey  = "X-Data-Salt"
 )
 
 // WrongHMAC is an error which contains the two hmacs which differ. A
@@ -104,29 +107,61 @@ func (hma *HMACAuth) create(t time.Time, vals ...[]byte) (string, string) {
 // are correctly signed. This function can be used by a client to enhance the request before
 // submitting it.
 func (hma *HMACAuth) AddAuth(rq *http.Request, t time.Time, body []byte) {
-	salt := randByteString(24)
-	mac, ts := hma.create(t, []byte(rq.Method), salt)
-	rq.Header.Add(tsHeader, ts)
-	rq.Header.Add(saltHeader, string(salt))
-	rq.Header.Add("Authorization", hma.Type+" "+mac)
+	headers := hma.AuthHeaders(rq.Method, t)
+	for k, v := range headers {
+		rq.Header.Add(k, v)
+	}
 }
 
 // AddAuthToClientRequest to support openapi too
 func (hma *HMACAuth) AddAuthToClientRequest(rq runtime.ClientRequest, t time.Time) {
+	headers := hma.AuthHeaders(rq.GetMethod(), t)
+	for k, v := range headers {
+		rq.SetHeaderParam(k, v)
+	}
+}
+
+// AuthHeaders creates the necessary headers
+func (hma *HMACAuth) AuthHeaders(method string, t time.Time) map[string]string {
 	salt := randByteString(24)
-	mac, ts := hma.create(t, []byte(rq.GetMethod()), salt)
-	rq.SetHeaderParam(tsHeader, ts)
-	rq.SetHeaderParam(saltHeader, string(salt))
-	rq.SetHeaderParam("Authorization", hma.Type+" "+mac)
+	mac, ts := hma.create(t, []byte(method), salt)
+
+	headers := make(map[string]string)
+	headers[TsHeaderKey] = ts
+	headers[SaltHeaderKey] = string(salt)
+	headers[AuthzHeaderKey] = hma.Type + " " + mac
+
+	return headers
+}
+
+type RequestData struct {
+	Method          string
+	AuthzHeader     string
+	TimestampHeader string
+	SaltHeader      string
+}
+type RequestDataGetter func() RequestData
+
+func (hma *HMACAuth) User(rq *http.Request) (*User, error) {
+
+	rqd := RequestData{
+		Method:          rq.Method,
+		AuthzHeader:     rq.Header.Get(AuthzHeaderKey),
+		TimestampHeader: rq.Header.Get(TsHeaderKey),
+		SaltHeader:      rq.Header.Get(SaltHeaderKey),
+	}
+
+	return hma.UserFromRequestData(rqd)
 }
 
 // User calculates the hmac from header values. The input-values for the calculation
 // are: Date-Header, Request-Method, Request-Content.
 // If the result does not match the HMAC in the header, this function returns an error. Otherwise
 // it returns the user which is connected to this hmac-auth.
-func (hma *HMACAuth) User(rq *http.Request) (*User, error) {
-	t := rq.Header.Get(tsHeader)
-	auth := rq.Header.Get("Authorization")
+func (hma *HMACAuth) UserFromRequestData(requestData RequestData) (*User, error) {
+
+	t := requestData.TimestampHeader
+	auth := requestData.AuthzHeader
 	if auth == "" {
 		return nil, errNoAuthFound
 	}
@@ -140,14 +175,15 @@ func (hma *HMACAuth) User(rq *http.Request) (*User, error) {
 	hm := strings.TrimSpace(splitToken[1])
 	ts, err := time.Parse(time.RFC3339, t)
 	if err != nil {
-		return nil, fmt.Errorf("unknown timestamp %q in %q header, use RFC3339: %v", t, tsHeader, err)
+		return nil, fmt.Errorf("unknown timestamp %q in %q header, use RFC3339: %v", t, TsHeaderKey, err)
 	}
 	if hma.Lifetime > 0 {
 		if time.Since(ts) > hma.Lifetime {
 			return nil, fmt.Errorf("the timestamp in your header is too old: %q", t)
 		}
 	}
-	vals := hma.getData(rq)
+
+	vals := hma.getData(requestData.Method, requestData.SaltHeader)
 	calc, _ := hma.create(ts, vals...)
 	if calc != hm {
 		return nil, newWrongHMAC(hm, calc)
@@ -157,19 +193,43 @@ func (hma *HMACAuth) User(rq *http.Request) (*User, error) {
 	return &newuser, nil
 }
 
-func (hma *HMACAuth) getData(rq *http.Request) [][]byte {
+func (hma *HMACAuth) getData(method, saltHeader string) [][]byte {
 	return [][]byte{
-		[]byte(rq.Method),
-		[]byte(rq.Header.Get(saltHeader)),
+		[]byte(method),
+		[]byte(saltHeader),
 	}
 }
 
+// replaceable function to create a random byte string
+var randByteString = randomByteString
+
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-var randByteString = func(n int) []byte {
+func randomByteString(n int) []byte {
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+		b[i] = letterBytes[secureRand.Intn(len(letterBytes))]
 	}
 	return b
+}
+
+// create a math/random with a secure source to get real random numbers
+var secureRand = rand.New(src)
+var src cryptoSource
+
+type cryptoSource struct{}
+
+func (s cryptoSource) Seed(seed int64) {
+	// crypto/rand does not need a seed
+}
+func (s cryptoSource) Int63() int64 {
+	return int64(s.Uint64() & ^uint64(1<<63))
+}
+
+func (s cryptoSource) Uint64() (v uint64) {
+	err := binary.Read(crand.Reader, binary.BigEndian, &v)
+	if err != nil {
+		panic(fmt.Sprintf("crypto/rand is unavailable, read failed with: %v", err))
+	}
+	return v
 }

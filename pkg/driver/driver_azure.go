@@ -38,7 +38,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/golang/glog"
+	"k8s.io/klog"
 )
 
 // AzureDriver is the driver struct for holding azure machine information
@@ -163,6 +163,15 @@ func (d *AzureDriver) getVMParameters(vmName string, networkInterfaceReferenceID
 		}
 	}
 
+	if d.AzureMachineClass.Spec.Properties.IdentityID != nil && *d.AzureMachineClass.Spec.Properties.IdentityID != "" {
+		VMParameters.Identity = &compute.VirtualMachineIdentity{
+			Type: compute.ResourceIdentityTypeUserAssigned,
+			UserAssignedIdentities: map[string]*compute.VirtualMachineIdentityUserAssignedIdentitiesValue{
+				*d.AzureMachineClass.Spec.Properties.IdentityID: &compute.VirtualMachineIdentityUserAssignedIdentitiesValue{},
+			},
+		}
+	}
+
 	return VMParameters
 }
 
@@ -191,7 +200,7 @@ func (d *AzureDriver) Create() (string, string, error) {
 }
 
 // Delete method is used to delete an azure machine
-func (d *AzureDriver) Delete() error {
+func (d *AzureDriver) Delete(machineID string) error {
 	clients, err := d.setup()
 	if err != nil {
 		return err
@@ -199,7 +208,7 @@ func (d *AzureDriver) Delete() error {
 
 	var (
 		ctx               = context.Background()
-		vmName            = decodeMachineID(d.MachineID)
+		vmName            = decodeMachineID(machineID)
 		nicName           = dependencyNameFromVMName(vmName, nicSuffix)
 		diskName          = dependencyNameFromVMName(vmName, diskSuffix)
 		resourceGroupName = d.AzureMachineClass.Spec.ResourceGroup
@@ -258,6 +267,16 @@ func (d *AzureDriver) GetVMs(machineID string) (result VMs, err error) {
 	mergeIntoResult(listOfVMsByDisk)
 
 	return
+}
+
+//GetUserData return the used data whit which the VM will be booted
+func (d *AzureDriver) GetUserData() string {
+	return d.UserData
+}
+
+//SetUserData set the used data whit which the VM will be booted
+func (d *AzureDriver) SetUserData(userData string) {
+	d.UserData = userData
 }
 
 func (d *AzureDriver) setup() (*azureDriverClients, error) {
@@ -364,7 +383,7 @@ func (d *AzureDriver) createVMNicDisk() (*compute.VirtualMachine, error) {
 		// Since machine creation failed, delete any infra resources created
 		deleteErr := clients.deleteVMNicDisk(ctx, resourceGroupName, vmName, nicName, diskName)
 		if deleteErr != nil {
-			glog.Errorf("Error occurred during resource clean up: %s", deleteErr)
+			klog.Errorf("Error occurred during resource clean up: %s", deleteErr)
 		}
 
 		return nil, onARMAPIErrorFail(prometheusServiceNIC, err, "NIC.CreateOrUpdate failed for %s", *NICParameters.Name)
@@ -376,7 +395,7 @@ func (d *AzureDriver) createVMNicDisk() (*compute.VirtualMachine, error) {
 		// Since machine creation failed, delete any infra resources created
 		deleteErr := clients.deleteVMNicDisk(ctx, resourceGroupName, vmName, nicName, diskName)
 		if deleteErr != nil {
-			glog.Errorf("Error occurred during resource clean up: %s", deleteErr)
+			klog.Errorf("Error occurred during resource clean up: %s", deleteErr)
 		}
 
 		return nil, onARMAPIErrorFail(prometheusServiceNIC, err, "NIC.WaitForCompletionRef failed for %s", *NICParameters.Name)
@@ -389,7 +408,7 @@ func (d *AzureDriver) createVMNicDisk() (*compute.VirtualMachine, error) {
 		// Since machine creation failed, delete any infra resources created
 		deleteErr := clients.deleteVMNicDisk(ctx, resourceGroupName, vmName, nicName, diskName)
 		if deleteErr != nil {
-			glog.Errorf("Error occurred during resource clean up: %s", deleteErr)
+			klog.Errorf("Error occurred during resource clean up: %s", deleteErr)
 		}
 
 		return nil, err
@@ -408,7 +427,7 @@ func (d *AzureDriver) createVMNicDisk() (*compute.VirtualMachine, error) {
 		//Since machine creation failed, delete any infra resources created
 		deleteErr := clients.deleteVMNicDisk(ctx, resourceGroupName, vmName, nicName, diskName)
 		if deleteErr != nil {
-			glog.Errorf("Error occurred during resource clean up: %s", deleteErr)
+			klog.Errorf("Error occurred during resource clean up: %s", deleteErr)
 		}
 
 		return nil, onARMAPIErrorFail(prometheusServiceVM, err, "VM.CreateOrUpdate failed for %s", *VMParameters.Name)
@@ -420,7 +439,7 @@ func (d *AzureDriver) createVMNicDisk() (*compute.VirtualMachine, error) {
 		// Since machine creation failed, delete any infra resources created
 		deleteErr := clients.deleteVMNicDisk(ctx, resourceGroupName, vmName, nicName, diskName)
 		if deleteErr != nil {
-			glog.Errorf("Error occurred during resource clean up: %s", deleteErr)
+			klog.Errorf("Error occurred during resource clean up: %s", deleteErr)
 		}
 
 		return nil, onARMAPIErrorFail(prometheusServiceVM, err, "VM.WaitForCompletionRef failed for %s", *VMParameters.Name)
@@ -432,7 +451,7 @@ func (d *AzureDriver) createVMNicDisk() (*compute.VirtualMachine, error) {
 		// Since machine creation failed, delete any infra resources created
 		deleteErr := clients.deleteVMNicDisk(ctx, resourceGroupName, vmName, nicName, diskName)
 		if deleteErr != nil {
-			glog.Errorf("Error occurred during resource clean up: %s", deleteErr)
+			klog.Errorf("Error occurred during resource clean up: %s", deleteErr)
 		}
 
 		return nil, onARMAPIErrorFail(prometheusServiceVM, err, "VMFuture.Result failed for %s", *VMParameters.Name)
@@ -544,7 +563,7 @@ func (clients *azureDriverClients) getRelevantVMs(ctx context.Context, machineID
 				listOfVMs[instanceID] = *server.Name
 			} else if machineID == instanceID {
 				listOfVMs[instanceID] = *server.Name
-				glog.V(3).Infof("Found machine with name: %q", *server.Name)
+				klog.V(3).Infof("Found machine with name: %q", *server.Name)
 				break
 			}
 		}
@@ -590,7 +609,7 @@ func (clients *azureDriverClients) getRelevantNICs(ctx context.Context, machineI
 				listOfVMs[instanceID] = machineName
 			} else if machineID == instanceID {
 				listOfVMs[instanceID] = machineName
-				glog.V(3).Infof("Found nic with name %q, hence appending machine %q", *nic.Name, machineName)
+				klog.V(3).Infof("Found nic with name %q, hence appending machine %q", *nic.Name, machineName)
 				break
 			}
 
@@ -640,7 +659,7 @@ func (clients *azureDriverClients) getRelevantDisks(ctx context.Context, machine
 					listOfVMs[instanceID] = machineName
 				} else if machineID == instanceID {
 					listOfVMs[instanceID] = machineName
-					glog.V(3).Infof("Found disk with name %q, hence appending machine %q", *disk.Name, machineName)
+					klog.V(3).Infof("Found disk with name %q, hence appending machine %q", *disk.Name, machineName)
 					break
 				}
 			}
@@ -723,8 +742,8 @@ func (clients *azureDriverClients) deleteVMNicDisk(ctx context.Context, resource
 
 // waitForDataDiskDetachment waits for data disks to be detached
 func (clients *azureDriverClients) waitForDataDiskDetachment(ctx context.Context, resourceGroupName string, vm compute.VirtualMachine) error {
-	glog.V(2).Infof("Data disk detachment began for %q", *vm.Name)
-	defer glog.V(2).Infof("Data disk detached for %q", *vm.Name)
+	klog.V(2).Infof("Data disk detachment began for %q", *vm.Name)
+	defer klog.V(2).Infof("Data disk detached for %q", *vm.Name)
 
 	if len(*vm.StorageProfile.DataDisks) > 0 {
 		// There are disks attached hence need to detach them
@@ -745,8 +764,8 @@ func (clients *azureDriverClients) waitForDataDiskDetachment(ctx context.Context
 }
 
 func (clients *azureDriverClients) powerOffVM(ctx context.Context, resourceGroupName string, vmName string) error {
-	glog.V(2).Infof("VM power-off began for %q", vmName)
-	defer glog.V(2).Infof("VM power-off done for %q", vmName)
+	klog.V(2).Infof("VM power-off began for %q", vmName)
+	defer klog.V(2).Infof("VM power-off done for %q", vmName)
 
 	future, err := clients.vm.PowerOff(ctx, resourceGroupName, vmName)
 	if err != nil {
@@ -761,8 +780,8 @@ func (clients *azureDriverClients) powerOffVM(ctx context.Context, resourceGroup
 }
 
 func (clients *azureDriverClients) deleteVM(ctx context.Context, resourceGroupName string, vmName string) error {
-	glog.V(2).Infof("VM deletion has began for %q", vmName)
-	defer glog.V(2).Infof("VM deleted for %q", vmName)
+	klog.V(2).Infof("VM deletion has began for %q", vmName)
+	defer klog.V(2).Infof("VM deleted for %q", vmName)
 
 	future, err := clients.vm.Delete(ctx, resourceGroupName, vmName)
 	if err != nil {
@@ -777,14 +796,14 @@ func (clients *azureDriverClients) deleteVM(ctx context.Context, resourceGroupNa
 }
 
 func (clients *azureDriverClients) deleteNIC(ctx context.Context, resourceGroupName string, nicName string) error {
-	glog.V(2).Infof("NIC delete started for %q", nicName)
-	defer glog.V(2).Infof("NIC deleted for %q", nicName)
+	klog.V(2).Infof("NIC delete started for %q", nicName)
+	defer klog.V(2).Infof("NIC deleted for %q", nicName)
 
 	future, err := clients.nic.Delete(ctx, resourceGroupName, nicName)
 	if err != nil {
 		return onARMAPIErrorFail(prometheusServiceNIC, err, "nic.Delete")
 	}
-	err = future.WaitForCompletion(ctx, clients.nic.Client)
+	err = future.WaitForCompletionRef(ctx, clients.nic.Client)
 	if err != nil {
 		return onARMAPIErrorFail(prometheusServiceNIC, err, "nic.Delete")
 	}
@@ -793,8 +812,8 @@ func (clients *azureDriverClients) deleteNIC(ctx context.Context, resourceGroupN
 }
 
 func (clients *azureDriverClients) deleteDisk(ctx context.Context, resourceGroupName string, diskName string) error {
-	glog.V(2).Infof("System disk delete started for %q", diskName)
-	defer glog.V(2).Infof("System disk deleted for %q", diskName)
+	klog.V(2).Infof("System disk delete started for %q", diskName)
+	defer klog.V(2).Infof("System disk deleted for %q", diskName)
 
 	future, err := clients.disk.Delete(ctx, resourceGroupName, diskName)
 	if err != nil {
@@ -841,9 +860,9 @@ func onErrorFail(err error, format string, v ...interface{}) error {
 	if err != nil {
 		message := fmt.Sprintf(format, v...)
 		if hasRequestID, requestID, detailedErr := retrieveRequestID(err); hasRequestID {
-			glog.Errorf("Azure ARM API call with x-ms-request-id=%s failed. %s: %s\n", requestID, message, *detailedErr)
+			klog.Errorf("Azure ARM API call with x-ms-request-id=%s failed. %s: %s\n", requestID, message, *detailedErr)
 		} else {
-			glog.Errorf("%s: %s\n", message, err)
+			klog.Errorf("%s: %s\n", message, err)
 		}
 	}
 	return err

@@ -23,8 +23,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/klog"
 
 	v1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/gardener/machine-controller-manager/pkg/metrics"
@@ -107,13 +107,13 @@ func (c *AlicloudDriver) Create() (string, string, error) {
 }
 
 // Delete method is used to delete an alicloud machine
-func (c *AlicloudDriver) Delete() error {
-	result, err := c.getVMDetails(c.MachineID)
+func (c *AlicloudDriver) Delete(machineID string) error {
+	result, err := c.getVMDetails(machineID)
 	if err != nil {
 		return err
 	} else if len(result) == 0 {
 		// No running instance exists with the given machineID
-		glog.V(2).Infof("No VM matching the machineID found on the provider %q", c.MachineID)
+		klog.V(2).Infof("No VM matching the machineID found on the provider %q", machineID)
 		return nil
 	}
 
@@ -121,14 +121,14 @@ func (c *AlicloudDriver) Delete() error {
 		return errors.New("ec2 instance not in running/stopped state")
 	}
 
-	machineID := c.decodeMachineID(c.MachineID)
+	instanceID := c.decodeMachineID(machineID)
 
 	client, err := c.getEcsClient()
 	if err != nil {
 		return err
 	}
 
-	err = c.deleteInstance(client, machineID)
+	err = c.deleteInstance(client, instanceID)
 	return err
 }
 
@@ -292,13 +292,23 @@ func (c *AlicloudDriver) GetVolNames(specs []corev1.PersistentVolumeSpec) ([]str
 	names := []string{}
 	for i := range specs {
 		spec := &specs[i]
-		if spec.FlexVolume == nil || spec.FlexVolume.Options == nil {
-			// Not an aliCloud volume
-			continue
-		}
-		if name, ok := spec.FlexVolume.Options["volumeId"]; ok {
-			names = append(names, name)
+		if spec.FlexVolume != nil && spec.FlexVolume.Options != nil {
+			if name, ok := spec.FlexVolume.Options["volumeId"]; ok {
+				names = append(names, name)
+			}
+		} else if spec.CSI != nil && spec.CSI.Driver == "diskplugin.csi.alibabacloud.com" && spec.CSI.VolumeHandle != "" {
+			names = append(names, spec.CSI.VolumeHandle)
 		}
 	}
 	return names, nil
+}
+
+//GetUserData return the used data whit which the VM will be booted
+func (c *AlicloudDriver) GetUserData() string {
+	return c.UserData
+}
+
+//SetUserData set the used data whit which the VM will be booted
+func (c *AlicloudDriver) SetUserData(userData string) {
+	c.UserData = userData
 }
