@@ -174,7 +174,7 @@ github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
 github.com/matttproud/golang_protobuf_extensions/pbutil
-# github.com/metal-stack/metal-go v0.3.1
+# github.com/metal-stack/metal-go v0.3.2
 github.com/metal-stack/metal-go
 github.com/metal-stack/metal-go/api/client/firewall
 github.com/metal-stack/metal-go/api/client/image

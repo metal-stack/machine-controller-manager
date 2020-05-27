@@ -202,7 +202,17 @@ func (d *MetalDriver) GetVMs(machineID string) (VMs, error) {
 // GetVolNames parses volume names from pv specs
 func (d *MetalDriver) GetVolNames(specs []corev1.PersistentVolumeSpec) ([]string, error) {
 	names := []string{}
-	return names, fmt.Errorf("Not implemented yet")
+
+	for i := range specs {
+		spec := &specs[i]
+		if spec.CSI == nil {
+			// Not a CSI volume
+			continue
+		}
+		name := spec.CSI.VolumeHandle
+		names = append(names, name)
+	}
+	return names, nil
 }
 
 // Helper function to create SVC
