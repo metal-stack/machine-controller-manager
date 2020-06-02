@@ -6,6 +6,7 @@ metadata:
   name: test-metal # Name of metal machine class goes here
   namespace: default # Namespace in which the machine class is to be deployed
 spec:
+  apiURL: https://metal-api-endpoint
   tenant: "Metal Cooperation"
   project: "gardener-test" # UUID of a project with which you have rights
   image: ubuntu-19.04 # OS ID or slug goes here

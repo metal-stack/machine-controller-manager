@@ -1180,6 +1180,7 @@ type MetalMachineClassList struct {
 
 // MetalMachineClassSpec is the specification of a cluster.
 type MetalMachineClassSpec struct {
+	APIURL    string
 	Partition string // required
 	Size      string // required
 	Image     string // required

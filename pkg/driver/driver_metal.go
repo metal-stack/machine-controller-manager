@@ -210,11 +210,7 @@ func (d *MetalDriver) createSVC() (*metalgo.Driver, error) {
 	token := strings.TrimSpace(string(d.CloudConfig.Data[v1alpha1.MetalAPIKey]))
 	hmac := strings.TrimSpace(string(d.CloudConfig.Data[v1alpha1.MetalAPIHMac]))
 
-	u, ok := d.CloudConfig.Data[v1alpha1.MetalAPIURL]
-	if !ok {
-		return nil, fmt.Errorf("missing %s in secret", v1alpha1.MetalAPIURL)
-	}
-	url := strings.TrimSpace(string(u))
+	url := strings.TrimSpace(string(d.MetalMachineClass.Spec.APIURL))
 
 	return metalgo.NewDriver(url, token, hmac)
 }

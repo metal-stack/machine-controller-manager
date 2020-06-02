@@ -1199,8 +1199,6 @@ const (
 	MetalAPIKey string = "metalAPIKey"
 	// MetalAPIHMac is a constant for a hmac that is part of the Metal cloud credentials
 	MetalAPIHMac string = "metalAPIHMac"
-	// MetalAPIURL is a constant for a url where to reach out the metal api
-	MetalAPIURL string = "metalAPIURL"
 )
 
 /********************** AlicloudMachineClass APIs ***************/
@@ -1339,6 +1337,7 @@ type MetalMachineClassList struct {
 
 // MetalMachineClassSpec is the specification of a cluster.
 type MetalMachineClassSpec struct {
+	APIURL    string   `json:"apiURL"`
 	Partition string   `json:"partition"`
 	Size      string   `json:"size"`
 	Image     string   `json:"image"`
